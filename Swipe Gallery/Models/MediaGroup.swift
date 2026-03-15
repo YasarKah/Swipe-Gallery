@@ -222,6 +222,7 @@ enum AppTextKey {
     case guidedMonthSubtitle
     case guidedMonthDetailPhotosFormat
     case guidedMonthDetailWithVideosFormat
+    case guidedStepCountFormat
     case undo
     case info
     case photoInfoDescription
@@ -335,6 +336,7 @@ enum AppText {
             case .guidedMonthSubtitle: return "Tek ay odagi"
             case .guidedMonthDetailPhotosFormat: return "%d fotograf iceren tek bir ay. Dikkatin dagilmadan temizleyebilirsin."
             case .guidedMonthDetailWithVideosFormat: return "%d fotograf ve %d video iceren tek bir ay. Kararlari bolmeden ilerleyebilirsin."
+            case .guidedStepCountFormat: return "🪜 %d adim"
             case .undo: return "Geri al"
             case .info: return "Fotograf Bilgileri"
             case .photoInfoDescription: return "Bu ekranda fotografa ait teknik detaylari gorebilirsin."
@@ -444,6 +446,7 @@ enum AppText {
             case .guidedMonthSubtitle: return "Single month focus"
             case .guidedMonthDetailPhotosFormat: return "A single month with %d photos so you can clean without splitting your attention."
             case .guidedMonthDetailWithVideosFormat: return "A single month with %d photos and %d videos so you can clean without splitting your attention."
+            case .guidedStepCountFormat: return "🪜 %d steps"
             case .undo: return "Undo"
             case .info: return "Photo Info"
             case .photoInfoDescription: return "You can see technical details about this photo on this screen."
