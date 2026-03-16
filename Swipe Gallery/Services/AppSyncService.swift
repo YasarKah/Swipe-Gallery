@@ -157,7 +157,7 @@ final class CloudKitProgressRepository: CloudSyncRepository {
     func savePayload(_ payload: MigrationPayload, for appleUserID: String) async throws {
         let recordID = CKRecord.ID(recordName: appleUserID)
         let data = try JSONEncoder().encode(payload)
-        let record = CKRecord(recordType: "ProgressSnapshot", recordID: recordID)
+        let record = try await fetchOrCreateRecord(recordID: recordID)
         record["payload"] = data as CKRecordValue
         record["updatedAt"] = payload.exportedAt as CKRecordValue
         record["sourceBundleIdentifier"] = payload.sourceBundleIdentifier as CKRecordValue
@@ -168,6 +168,28 @@ final class CloudKitProgressRepository: CloudSyncRepository {
                     continuation.resume(throwing: error)
                 } else {
                     continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func fetchOrCreateRecord(recordID: CKRecord.ID) async throws -> CKRecord {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CKRecord, Error>) in
+            database.fetch(withRecordID: recordID) { record, error in
+                if let ckError = error as? CKError, ckError.code == .unknownItem {
+                    continuation.resume(returning: CKRecord(recordType: "ProgressSnapshot", recordID: recordID))
+                    return
+                }
+
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                if let record {
+                    continuation.resume(returning: record)
+                } else {
+                    continuation.resume(returning: CKRecord(recordType: "ProgressSnapshot", recordID: recordID))
                 }
             }
         }
