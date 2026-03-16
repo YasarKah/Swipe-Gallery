@@ -21,10 +21,12 @@ struct SwipeCardView: View {
     var cardHeight: CGFloat
     let onDecision: (SwipeDecision) -> Void
     @Binding var cardOffset: CGSize
+    @Binding var isImageReady: Bool
 
     @State private var image: UIImage?
-    @State private var hapticGenerator: UIImpactFeedbackGenerator?
-    @State private var showLivePhotoPreview = false
+    @State private var livePhoto: PHLivePhoto?
+    @State private var isPreparingLivePhoto = false
+    @State private var livePlaybackToken = 0
 
     var body: some View {
         cardContent
@@ -32,9 +34,6 @@ struct SwipeCardView: View {
             .frame(height: cardHeight)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-        .sheet(isPresented: $showLivePhotoPreview) {
-            LivePhotoPreviewSheet(item: item)
-        }
     }
 
     /// Tinder tarzı: sürüklerken kart hafifçe yarım daire hissiyle döner (radius çevresinde)
@@ -51,10 +50,7 @@ struct SwipeCardView: View {
             }
             overlayLabels
         }
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: AppPalette.accentBlue.opacity(0.06), radius: 18, y: 8)
-        .shadow(color: .black.opacity(0.10), radius: 16, y: 8)
+        .glassCard(accent: AppPalette.accentPurple, cornerRadius: 30, strokeOpacity: 0.20)
         .rotationEffect(cardRotation)
         .offset(cardOffset)
         .gesture(dragGesture)
@@ -62,17 +58,17 @@ struct SwipeCardView: View {
 
     private var liveBadge: some View {
         Button {
-            showLivePhotoPreview = true
+            playLivePhoto()
         } label: {
-            Label(preferences.text(.live), systemImage: "livephoto")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(AppPalette.surface)
-                .clipShape(Capsule())
+            AccentBadge(
+                text: isPreparingLivePhoto ? preferences.text(.preparingLivePhoto) : preferences.text(.live),
+                accent: AppPalette.accentPink,
+                prominent: true
+            )
         }
         .buttonStyle(.plain)
+        .disabled(!isImageReady || isPreparingLivePhoto)
+        .opacity((!isImageReady || isPreparingLivePhoto) ? 0.65 : 1)
         .padding(14)
     }
 
@@ -89,8 +85,8 @@ struct SwipeCardView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                AppPalette.accentBlue.opacity(0.16),
-                                AppPalette.accentPurple.opacity(0.12)
+                                AppPalette.glassSurfaceStrong,
+                                AppPalette.glassSurface
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -105,26 +101,31 @@ struct SwipeCardView: View {
                             .strokeBorder(.white.opacity(0.04), lineWidth: 0.5)
                     }
 
-                if let img = image ?? initialImage {
+                if let livePhoto {
+                    LivePhotoInlineView(livePhoto: livePhoto, playbackToken: livePlaybackToken)
+                        .frame(width: mediaSize.width, height: mediaSize.height)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else if let img = image ?? initialImage {
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFit()
                         .frame(width: mediaSize.width, height: mediaSize.height)
+                } else {
+                    ProgressView()
+                        .tint(AppPalette.textPrimary)
                 }
             }
             .padding(10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            if hapticGenerator == nil {
-                let gen = UIImpactFeedbackGenerator(style: .medium)
-                gen.prepare()
-                hapticGenerator = gen
-            }
+            isImageReady = initialImage != nil
             if image != nil { return }
             if let preloaded = initialImage {
                 image = preloaded
+                isImageReady = true
             } else {
+                isImageReady = false
                 loadImage()
             }
         }
@@ -141,7 +142,7 @@ struct SwipeCardView: View {
     }
 
     private var keepLabel: some View {
-        decisionPill(title: preferences.text(.keep), systemImage: "checkmark.circle.fill", color: AppPalette.success)
+        decisionPill(title: preferences.text(.keep), systemImage: "checkmark.circle.fill", color: AppPalette.accentBlue)
     }
 
     private var deleteLabel: some View {
@@ -156,13 +157,22 @@ struct SwipeCardView: View {
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
+                guard isImageReady else { return }
                 cardOffset = value.translation
             }
             .onEnded { value in
-                let threshold: CGFloat = 120
-                if value.translation.width < -threshold {
+                guard isImageReady else {
+                    withAnimation(.spring(response: 0.3)) { cardOffset = .zero }
+                    return
+                }
+                let threshold: CGFloat = min(92, UIScreen.main.bounds.width * 0.22)
+                let effectiveTranslation = abs(value.predictedEndTranslation.width) > abs(value.translation.width)
+                    ? value.predictedEndTranslation.width
+                    : value.translation.width
+
+                if effectiveTranslation < -threshold {
                     commitDecision(.delete)
-                } else if value.translation.width > threshold {
+                } else if effectiveTranslation > threshold {
                     commitDecision(.keep)
                 } else {
                     withAnimation(.spring(response: 0.3)) { cardOffset = .zero }
@@ -171,7 +181,8 @@ struct SwipeCardView: View {
     }
 
     private func commitDecision(_ decision: SwipeDecision) {
-        hapticGenerator?.impactOccurred()
+        guard isImageReady else { return }
+        AppFeedback.commit(style: .rigid)
         withAnimation(.easeOut(duration: cardExitAnimationDuration)) {
             cardOffset = CGSize(
                 width: decision == .delete ? -400 : 400,
@@ -192,18 +203,33 @@ struct SwipeCardView: View {
             deliveryMode: .highQualityFormat
         ) { img in
             image = img
+            isImageReady = img != nil
         }
     }
 
-    private var cardBackground: some View {
-        LinearGradient(
-            colors: [
-                AppPalette.cardBase.opacity(0.58),
-                AppPalette.backgroundBottom.opacity(0.46)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private func playLivePhoto() {
+        guard item.isLivePhoto, isImageReady, !isPreparingLivePhoto else { return }
+
+        if livePhoto != nil {
+            AppFeedback.selection()
+            livePlaybackToken += 1
+            return
+        }
+
+        isPreparingLivePhoto = true
+        ImageLoaderService.loadLivePhoto(
+            for: item.phAsset,
+            targetSize: CGSize(width: 1400, height: 1400)
+        ) { loaded in
+            livePhoto = loaded
+            isPreparingLivePhoto = false
+            if loaded != nil {
+                AppFeedback.selection()
+                livePlaybackToken += 1
+            } else {
+                AppFeedback.error()
+            }
+        }
     }
 
     private func decisionPill(title: String, systemImage: String, color: Color) -> some View {
@@ -212,97 +238,47 @@ struct SwipeCardView: View {
             .foregroundStyle(color)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(.black.opacity(0.28))
+            .background(.ultraThinMaterial)
+            .overlay {
+                Capsule()
+                    .fill(color.opacity(0.08))
+            }
             .clipShape(Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(AppPalette.glassBorder.opacity(0.14), lineWidth: 1)
+            }
     }
 }
 
 // Preview gerçek PHAsset gerektirir; simülatörde galeri ile test edin.
 
-private struct LivePhotoPreviewSheet: View {
-    @EnvironmentObject private var preferences: AppPreferences
-    let item: MediaItem
-    @Environment(\.dismiss) private var dismiss
+private struct LivePhotoInlineView: UIViewRepresentable {
+    typealias UIViewType = PHLivePhotoView
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                LinearGradient(
-                    colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                if item.isLivePhoto {
-                    LivePhotoPlayerView(asset: item.phAsset)
-                        .padding(20)
-                } else {
-                    ContentUnavailableView(
-                        preferences.text(.featureUnavailable),
-                        systemImage: "sparkles",
-                        description: Text(preferences.text(.featureUnavailableDescription))
-                    )
-                }
-            }
-            .navigationTitle(preferences.text(.live))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(preferences.text(.close)) { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-private struct LivePhotoPlayerView: View {
-    @EnvironmentObject private var preferences: AppPreferences
-    let asset: PHAsset
-    @State private var livePhoto: PHLivePhoto?
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(AppPalette.surface)
-
-            if let livePhoto {
-                LivePhotoContainerView(livePhoto: livePhoto)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .padding(12)
-            } else {
-                ProgressView(preferences.text(.preparingLivePhoto))
-                    .tint(.white)
-                    .foregroundStyle(.white)
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(AppPalette.border, lineWidth: 1)
-        }
-        .task {
-            ImageLoaderService.loadLivePhoto(
-                for: asset,
-                targetSize: CGSize(width: 1400, height: 1400)
-            ) { loaded in
-                livePhoto = loaded
-            }
-        }
-    }
-}
-
-private struct LivePhotoContainerView: UIViewRepresentable {
     let livePhoto: PHLivePhoto
+    let playbackToken: Int
 
-    func makeUIView(context: Context) -> PHLivePhotoView {
+    func makeUIView(context: Context) -> UIViewType {
         let view = PHLivePhotoView()
         view.contentMode = .scaleAspectFit
         view.clipsToBounds = true
         return view
     }
 
-    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+    func updateUIView(_ uiView: UIViewType, context: Context) {
         uiView.livePhoto = livePhoto
-        uiView.startPlayback(with: .full)
+        if context.coordinator.playbackToken != playbackToken {
+            context.coordinator.playbackToken = playbackToken
+            uiView.startPlayback(with: .full)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        var playbackToken = -1
     }
 }

@@ -27,6 +27,13 @@
 		BD551A2B2F6749B90072DCA6 /* SwipeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A2C2F6749B90072DCA6 /* SwipeCardView.swift */; };
 		BD551A2D2F6749B90072DCA6 /* ReviewDeleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A2E2F6749B90072DCA6 /* ReviewDeleteView.swift */; };
 		BD551A322F6749B90072DCA6 /* ImageLoaderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A332F6749B90072DCA6 /* ImageLoaderService.swift */; };
+		BD551A362F6749B90072DCA6 /* GuidedCleanupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A372F6749B90072DCA6 /* GuidedCleanupStep.swift */; };
+		BD551A382F6749B90072DCA6 /* GuidedCleanupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A392F6749B90072DCA6 /* GuidedCleanupService.swift */; };
+		BD551A3A2F6749B90072DCA6 /* GuidedCleanupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A3B2F6749B90072DCA6 /* GuidedCleanupView.swift */; };
+		BD551A3C2F6749B90072DCA6 /* AppDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A3D2F6749B90072DCA6 /* AppDesignSystem.swift */; };
+		BD551A3E2F6749B90072DCA6 /* AppFeedbackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */; };
+		BD551A402F6749B90072DCA6 /* AppLegalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A412F6749B90072DCA6 /* AppLegalLinks.swift */; };
+		BD551A422F6749B90072DCA6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +78,13 @@
 		BD551A2C2F6749B90072DCA6 /* SwipeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeCardView.swift; sourceTree = "<group>"; };
 		BD551A2E2F6749B90072DCA6 /* ReviewDeleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewDeleteView.swift; sourceTree = "<group>"; };
 		BD551A332F6749B90072DCA6 /* ImageLoaderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoaderService.swift; sourceTree = "<group>"; };
+		BD551A372F6749B90072DCA6 /* GuidedCleanupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedCleanupStep.swift; sourceTree = "<group>"; };
+		BD551A392F6749B90072DCA6 /* GuidedCleanupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedCleanupService.swift; sourceTree = "<group>"; };
+		BD551A3B2F6749B90072DCA6 /* GuidedCleanupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedCleanupView.swift; sourceTree = "<group>"; };
+		BD551A3D2F6749B90072DCA6 /* AppDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDesignSystem.swift; sourceTree = "<group>"; };
+		BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFeedbackService.swift; sourceTree = "<group>"; };
+		BD551A412F6749B90072DCA6 /* AppLegalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLegalLinks.swift; sourceTree = "<group>"; };
+		BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,6 +136,7 @@
 			isa = PBXGroup;
 			children = (
 				BD551A122F67550B0072DCA6 /* Swipe-Gallery-Info.plist */,
+				BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */,
 				BD551A1A2F6749B90072DCA6 /* App */,
 				BD551A1B2F6749B90072DCA6 /* Models */,
 				BD551A302F6749B90072DCA6 /* Services */,
@@ -169,6 +184,7 @@
 		BD551A1B2F6749B90072DCA6 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				BD551A372F6749B90072DCA6 /* GuidedCleanupStep.swift */,
 				BD551A142F6749B90072DCA6 /* MediaGroup.swift */,
 				BD551A202F6749B90072DCA6 /* MediaItem.swift */,
 				BD551A222F6749B90072DCA6 /* SwipeDecision.swift */,
@@ -179,6 +195,8 @@
 		BD551A1C2F6749B90072DCA6 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				BD551A3D2F6749B90072DCA6 /* AppDesignSystem.swift */,
+				BD551A3B2F6749B90072DCA6 /* GuidedCleanupView.swift */,
 				BD551A162F6749B90072DCA6 /* GroupRowView.swift */,
 				BD551A182F6749B90072DCA6 /* HomeView.swift */,
 				BD551A2A2F6749B90072DCA6 /* GroupDetailView.swift */,
@@ -191,6 +209,8 @@
 		BD551A302F6749B90072DCA6 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */,
+				BD551A392F6749B90072DCA6 /* GuidedCleanupService.swift */,
 				BD551A332F6749B90072DCA6 /* ImageLoaderService.swift */,
 				BD551A242F6749B90072DCA6 /* PhotoLibraryService.swift */,
 				BD551A262F6749B90072DCA6 /* MediaGroupingService.swift */,
@@ -203,6 +223,7 @@
 		BD551A312F6749B90072DCA6 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				BD551A412F6749B90072DCA6 /* AppLegalLinks.swift */,
 				BD551A1E2F6749B90072DCA6 /* DateFormatterHelper.swift */,
 			);
 			path = Utils;
@@ -314,6 +335,7 @@
 			files = (
 				BD5519F02F6749B90072DCA6 /* Preview Assets.xcassets in Resources */,
 				BD5519ED2F6749B90072DCA6 /* Assets.xcassets in Resources */,
+				BD551A422F6749B90072DCA6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,14 +366,20 @@
 				BD551A192F6749B90072DCA6 /* HomeView.swift in Sources */,
 				BD551A1D2F6749B90072DCA6 /* DateFormatterHelper.swift in Sources */,
 				BD551A1F2F6749B90072DCA6 /* MediaItem.swift in Sources */,
+				BD551A362F6749B90072DCA6 /* GuidedCleanupStep.swift in Sources */,
 				BD551A212F6749B90072DCA6 /* SwipeDecision.swift in Sources */,
+				BD551A402F6749B90072DCA6 /* AppLegalLinks.swift in Sources */,
+				BD551A3C2F6749B90072DCA6 /* AppDesignSystem.swift in Sources */,
 				BD551A322F6749B90072DCA6 /* ImageLoaderService.swift in Sources */,
 				BD551A232F6749B90072DCA6 /* PhotoLibraryService.swift in Sources */,
 				BD551A252F6749B90072DCA6 /* MediaGroupingService.swift in Sources */,
+				BD551A3E2F6749B90072DCA6 /* AppFeedbackService.swift in Sources */,
+				BD551A382F6749B90072DCA6 /* GuidedCleanupService.swift in Sources */,
 				BD551A342F6749B90072DCA6 /* GroupProgressStore.swift in Sources */,
 				BD551A272F6749B90072DCA6 /* DeleteQueueService.swift in Sources */,
 				BD551A292F6749B90072DCA6 /* GroupDetailView.swift in Sources */,
 				BD551A2B2F6749B90072DCA6 /* SwipeCardView.swift in Sources */,
+				BD551A3A2F6749B90072DCA6 /* GuidedCleanupView.swift in Sources */,
 				BD551A2D2F6749B90072DCA6 /* ReviewDeleteView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -441,7 +469,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -498,7 +526,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -520,9 +548,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Swipe-Gallery-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Swipe Gallery";
+				INFOPLIST_KEY_CFBundleDisplayName = "Smart Swipe";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.\nGalerinizi temizlGalerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.\nemek için fotoğraflara erişmemiz gerekiyor.\n";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -535,7 +563,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.";
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-Gallery";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipe";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -555,9 +583,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Swipe-Gallery-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Swipe Gallery";
+				INFOPLIST_KEY_CFBundleDisplayName = "Smart Swipe";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.\nGalerinizi temizlGalerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.\nemek için fotoğraflara erişmemiz gerekiyor.\n";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -570,7 +598,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				NSPhotoLibraryUsageDescription = "Galerinizi temizlemek için fotoğraflara erişmemiz gerekiyor.";
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-Gallery";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipe";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -587,9 +615,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-GalleryTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipeTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -607,9 +635,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-GalleryTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipeTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -627,7 +655,7 @@
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-GalleryUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipeUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -645,7 +673,7 @@
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "yasarkah.Swipe-GalleryUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yasarkah.smartswipeUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;

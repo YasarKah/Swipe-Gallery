@@ -52,8 +52,10 @@ struct HomeView: View {
                     emptyStateView
                 } else {
                     ScrollView {
-                        VStack(spacing: 20) {
-                            groupListSection
+                        LazyVStack(spacing: 20) {
+                            guidedCleanupSection
+                            groupListHeader
+                            groupRows
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -65,15 +67,17 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
+                        AppFeedback.selection()
                         showSortSheet = true
                     } label: {
-                        Image(systemName: "arrow.up.arrow.down.circle")
+                        toolbarIcon(systemName: "arrow.up.arrow.down")
                     }
 
                     Button {
+                        AppFeedback.selection()
                         showSettings = true
                     } label: {
-                        Image(systemName: "gearshape.fill")
+                        toolbarIcon(systemName: "gearshape.fill")
                     }
                 }
             }
@@ -117,7 +121,7 @@ struct HomeView: View {
                 .tint(.white)
             Text(preferences.text(.loadingGallery))
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(AppPalette.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -140,26 +144,105 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Grup kartları listesi
-    private var groupListSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var groupListHeader: some View {
+        HStack {
             Text(preferences.text(.groupsTitle))
                 .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 2)
-
-            ForEach(Array(sortedGroups.enumerated()), id: \.element.id) { index, group in
-                let resolvedGroup = resolvedGroup(for: group)
-                GroupRowView(
-                    group: resolvedGroup,
-                    includeVideos: includeVideos,
-                    progressViewed: progressStore.progress(for: resolvedGroup.id)?.viewed ?? 0,
-                    progressTotal: progressStore.progress(for: resolvedGroup.id)?.total ?? 0,
-                    rowIndex: index,
-                    onTap: { handleGroupTap(resolvedGroup) }
-                )
-            }
+                .foregroundStyle(AppPalette.textPrimary)
+            Spacer()
+            AccentBadge(text: sortOptionTitle, accent: AppPalette.accentBlue, useMaterial: false)
         }
+        .padding(.horizontal, 2)
+    }
+
+    @ViewBuilder
+    private var groupRows: some View {
+        ForEach(Array(sortedGroups.enumerated()), id: \.element.id) { index, group in
+            let resolvedGroup = resolvedGroup(for: group)
+            GroupRowView(
+                group: resolvedGroup,
+                includeVideos: includeVideos,
+                progressViewed: progressStore.progress(for: resolvedGroup.id)?.viewed ?? 0,
+                progressTotal: progressStore.progress(for: resolvedGroup.id)?.total ?? 0,
+                rowIndex: index,
+                onTap: { handleGroupTap(resolvedGroup) }
+            )
+        }
+    }
+
+    private var guidedCleanupSection: some View {
+        NavigationLink {
+            GuidedCleanupView(
+                includeVideos: includeVideos,
+                progressStore: progressStore
+            )
+            .environmentObject(preferences)
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(preferences.text(.guidedCleanupHomeTitle))
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(AppPalette.textPrimary)
+                        Text(preferences.text(.guidedCleanupHomeSubtitle))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppPalette.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(AppPalette.textPrimary)
+                        .frame(width: 50, height: 50)
+                        .background {
+                            Circle()
+                                .fill(AppPalette.cardBase.opacity(0.96))
+                        }
+                        .overlay {
+                            Circle()
+                                .strokeBorder(AppPalette.glassBorder.opacity(0.18), lineWidth: 1)
+                        }
+                }
+
+                Text(preferences.text(.guidedCleanupHomeDetail))
+                    .font(.subheadline)
+                    .foregroundStyle(AppPalette.textSecondary)
+                    .multilineTextAlignment(.leading)
+
+                HStack(spacing: 8) {
+                    heroBadge(text: preferences.text(.guidedCleanupTitle), accent: AppPalette.accentPurple)
+                    heroBadge(text: preferences.text(.sortNewestFirst), accent: AppPalette.accentBlue)
+                    if includeVideos {
+                        heroBadge(text: "🎬", accent: AppPalette.accentPink)
+                    }
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [
+                        AppPalette.cardBase.opacity(0.98),
+                        AppPalette.accentPurple.opacity(0.14)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(AppPalette.accentPurple.opacity(0.18), lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .shadow(color: Color.black.opacity(0.16), radius: 12, y: 6)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                AppFeedback.selection()
+            }
+        )
     }
 
     private func loadGroups() async {
@@ -183,11 +266,7 @@ struct HomeView: View {
     }
 
     private var screenBackground: some View {
-        LinearGradient(
-            colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        AppBackgroundView()
     }
 
     private var sectionBackground: some View {
@@ -281,10 +360,10 @@ struct HomeView: View {
 
     private func resolvedGroup(for group: MediaGroup) -> MediaGroup {
         var resolved = group
-        resolved.isCompleted = progressStore.completedGroupIds.contains(group.id)
+        resolved.isCompleted = isCompleted(group.id)
         resolved.childGroups = group.childGroups.map { child in
             var updatedChild = child
-            updatedChild.isCompleted = progressStore.completedGroupIds.contains(child.id)
+            updatedChild.isCompleted = isCompleted(child.id)
             return updatedChild
         }
 
@@ -296,6 +375,7 @@ struct HomeView: View {
     }
 
     private func handleGroupTap(_ group: MediaGroup) {
+        AppFeedback.selection()
         guard shouldAskToResume(for: group) else {
             selectedTarget = NavigationTarget(group: group, startIndex: 0)
             return
@@ -307,7 +387,11 @@ struct HomeView: View {
         guard group.type != .smart && group.type != .monthCollection else { return false }
         if case .smartCategory(.similar) = group.type { return false }
         guard let progress = progressStore.progress(for: group.id) else { return false }
-        return progress.viewed > 0 && progress.viewed < progress.total
+        return progress.viewed > 0 && !progress.isComplete
+    }
+
+    private func isCompleted(_ groupId: String) -> Bool {
+        progressStore.completedGroupIds.contains(groupId) || (progressStore.progress(for: groupId)?.isComplete ?? false)
     }
 
     private func openPendingGroup(startFromSavedProgress: Bool) {
@@ -315,8 +399,10 @@ struct HomeView: View {
         let startIndex: Int
 
         if startFromSavedProgress {
+            AppFeedback.selection()
             startIndex = progressStore.progress(for: group.id)?.viewed ?? 0
         } else {
+            AppFeedback.warning()
             progressStore.clearProgress(for: group.id)
             startIndex = 0
         }
@@ -333,13 +419,48 @@ struct HomeView: View {
             }
         )
     }
+
+    private func heroBadge(text: String, accent: Color) -> some View {
+        AccentBadge(text: text, accent: accent, prominent: true, useMaterial: false)
+    }
+
+    private var sortOptionTitle: String {
+        switch sortOption {
+        case .newestFirst:
+            return preferences.text(.sortNewestFirst)
+        case .oldestFirst:
+            return preferences.text(.sortOldestFirst)
+        case .largestFirst:
+            return preferences.text(.sortLargestFirst)
+        case .smallestFirst:
+            return preferences.text(.sortSmallestFirst)
+        }
+    }
+
+    private func toolbarIcon(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(AppPalette.textPrimary)
+            .frame(width: 34, height: 34)
+            .background {
+                Circle()
+                    .fill(AppPalette.cardBase.opacity(0.94))
+            }
+            .overlay {
+                Circle()
+                    .strokeBorder(AppPalette.glassBorder.opacity(0.14), lineWidth: 1)
+            }
+    }
 }
 
 // MARK: - Preview
 
-#Preview("Ana ekran") {
-    HomeView()
-        .environmentObject(AppPreferences())
+struct HomeView_Previews: PreviewProvider {
+    static var previews: some View {
+        HomeView()
+            .environmentObject(AppPreferences())
+            .previewDisplayName("Ana ekran")
+    }
 }
 
 private struct MonthCollectionView: View {
@@ -360,9 +481,7 @@ private struct MonthCollectionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(preferences.text(.monthCollectionDescription))
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                sectionIntro(preferences.text(.monthCollectionDescription), accent: AppPalette.accentBlue)
 
                 VStack(spacing: 12) {
                     ForEach(Array(group.childGroups.enumerated()), id: \.element.id) { index, child in
@@ -382,12 +501,8 @@ private struct MonthCollectionView: View {
             .padding(.vertical, 16)
         }
         .background(
-            LinearGradient(
-                colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            AppBackgroundView()
+                .ignoresSafeArea()
         )
         .navigationTitle(group.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -417,11 +532,12 @@ private struct MonthCollectionView: View {
 
     private func resolvedGroup(for group: MediaGroup) -> MediaGroup {
         var resolved = group
-        resolved.isCompleted = progressStore.completedGroupIds.contains(group.id)
+        resolved.isCompleted = isCompleted(group.id)
         return resolved
     }
 
     private func handleGroupTap(_ group: MediaGroup) {
+        AppFeedback.selection()
         guard shouldAskToResume(for: group) else {
             selectedTarget = NavigationTarget(group: group, startIndex: 0)
             return
@@ -431,7 +547,11 @@ private struct MonthCollectionView: View {
 
     private func shouldAskToResume(for group: MediaGroup) -> Bool {
         guard let progress = progressStore.progress(for: group.id) else { return false }
-        return progress.viewed > 0 && progress.viewed < progress.total
+        return progress.viewed > 0 && !progress.isComplete
+    }
+
+    private func isCompleted(_ groupId: String) -> Bool {
+        progressStore.completedGroupIds.contains(groupId) || (progressStore.progress(for: groupId)?.isComplete ?? false)
     }
 
     private func openPendingGroup(startFromSavedProgress: Bool) {
@@ -439,8 +559,10 @@ private struct MonthCollectionView: View {
         let startIndex: Int
 
         if startFromSavedProgress {
+            AppFeedback.selection()
             startIndex = progressStore.progress(for: group.id)?.viewed ?? 0
         } else {
+            AppFeedback.warning()
             progressStore.clearProgress(for: group.id)
             startIndex = 0
         }
@@ -481,9 +603,7 @@ private struct SmartGroupsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(preferences.text(.smartDescription))
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                sectionIntro(preferences.text(.smartDescription), accent: AppPalette.accentPurple)
 
                 if isLoading {
                     ProgressView(preferences.text(.loading))
@@ -510,12 +630,8 @@ private struct SmartGroupsView: View {
             .padding(.vertical, 16)
         }
         .background(
-            LinearGradient(
-                colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            AppBackgroundView(variant: .elevated)
+                .ignoresSafeArea()
         )
         .navigationTitle(group.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -548,7 +664,7 @@ private struct SmartGroupsView: View {
 
     private func resolvedGroup(for group: MediaGroup) -> MediaGroup {
         var resolved = group
-        resolved.isCompleted = progressStore.completedGroupIds.contains(group.id)
+        resolved.isCompleted = isCompleted(group.id)
         return resolved
     }
 
@@ -563,6 +679,7 @@ private struct SmartGroupsView: View {
     }
 
     private func handleGroupTap(_ group: MediaGroup) {
+        AppFeedback.selection()
         guard shouldAskToResume(for: group) else {
             selectedTarget = NavigationTarget(group: group, startIndex: 0)
             return
@@ -572,7 +689,11 @@ private struct SmartGroupsView: View {
 
     private func shouldAskToResume(for group: MediaGroup) -> Bool {
         guard let progress = progressStore.progress(for: group.id) else { return false }
-        return progress.viewed > 0 && progress.viewed < progress.total
+        return progress.viewed > 0 && !progress.isComplete
+    }
+
+    private func isCompleted(_ groupId: String) -> Bool {
+        progressStore.completedGroupIds.contains(groupId) || (progressStore.progress(for: groupId)?.isComplete ?? false)
     }
 
     private func openPendingGroup(startFromSavedProgress: Bool) {
@@ -580,8 +701,10 @@ private struct SmartGroupsView: View {
         let startIndex: Int
 
         if startFromSavedProgress {
+            AppFeedback.selection()
             startIndex = progressStore.progress(for: group.id)?.viewed ?? 0
         } else {
+            AppFeedback.warning()
             progressStore.clearProgress(for: group.id)
             startIndex = 0
         }
@@ -618,9 +741,7 @@ private struct SmartCategoryGroupsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(preferences.text(.similarDescription))
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                sectionIntro(preferences.text(.similarDescription), accent: AppPalette.accentPink)
 
                 VStack(spacing: 12) {
                     if let allSimilarGroup {
@@ -651,12 +772,8 @@ private struct SmartCategoryGroupsView: View {
             .padding(.vertical, 16)
         }
         .background(
-            LinearGradient(
-                colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            AppBackgroundView(variant: .elevated)
+                .ignoresSafeArea()
         )
         .navigationTitle(group.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -686,14 +803,14 @@ private struct SmartCategoryGroupsView: View {
 
     private func resolvedGroup(for group: MediaGroup) -> MediaGroup {
         var resolved = group
-        resolved.isCompleted = progressStore.completedGroupIds.contains(group.id)
+        resolved.isCompleted = isCompleted(group.id)
         return resolved
     }
 
     private var allSimilarGroup: MediaGroup? {
         guard !group.assetIdentifiers.isEmpty else { return nil }
         let allCompleted = !group.childGroups.isEmpty && group.childGroups.allSatisfy {
-            progressStore.completedGroupIds.contains($0.id)
+            isCompleted($0.id)
         }
 
         return MediaGroup(
@@ -717,7 +834,11 @@ private struct SmartCategoryGroupsView: View {
 
     private func shouldAskToResume(for group: MediaGroup) -> Bool {
         guard let progress = progressStore.progress(for: group.id) else { return false }
-        return progress.viewed > 0 && progress.viewed < progress.total
+        return progress.viewed > 0 && !progress.isComplete
+    }
+
+    private func isCompleted(_ groupId: String) -> Bool {
+        progressStore.completedGroupIds.contains(groupId) || (progressStore.progress(for: groupId)?.isComplete ?? false)
     }
 
     private func openPendingGroup(startFromSavedProgress: Bool) {
@@ -753,18 +874,14 @@ private struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                AppBackgroundView(variant: .elevated)
+                    .ignoresSafeArea()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         Text(preferences.text(.settingsDescription))
                             .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.72))
+                            .foregroundStyle(AppPalette.textSecondary)
 
                         settingCard {
                             HStack(spacing: 14) {
@@ -781,6 +898,9 @@ private struct SettingsSheet: View {
                                 Toggle("", isOn: $includeVideos)
                                     .labelsHidden()
                                     .tint(AppPalette.accentPurple)
+                                    .onChange(of: includeVideos) { _, _ in
+                                        AppFeedback.selection()
+                                    }
                             }
                         }
 
@@ -804,6 +924,43 @@ private struct SettingsSheet: View {
                                     }
                                 }
                                 .pickerStyle(.segmented)
+                                .onChange(of: preferences.language) { _, _ in
+                                    AppFeedback.selection()
+                                }
+                            }
+                        }
+
+                        settingCard {
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack(spacing: 14) {
+                                    iconBubble(systemName: "doc.text.magnifyingglass")
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(preferences.text(.legal))
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Text(preferences.text(.legalDescription))
+                                            .font(.caption)
+                                            .foregroundStyle(.white.opacity(0.68))
+                                    }
+                                }
+
+                                legalLink(
+                                    title: preferences.text(.privacyPolicy),
+                                    systemName: "hand.raised.fill",
+                                    url: AppLegalLinks.privacyPolicy
+                                )
+
+                                legalLink(
+                                    title: preferences.text(.termsOfUse),
+                                    systemName: "doc.text.fill",
+                                    url: AppLegalLinks.termsOfUse
+                                )
+
+                                legalLink(
+                                    title: preferences.text(.support),
+                                    systemName: "lifepreserver.fill",
+                                    url: AppLegalLinks.support
+                                )
                             }
                         }
                     }
@@ -823,12 +980,7 @@ private struct SettingsSheet: View {
     private func settingCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(16)
-            .background(AppPalette.surface)
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(AppPalette.border, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .glassCard(accent: AppPalette.accentPurple, cornerRadius: 22, strokeOpacity: 0.16, shadowOpacity: 0.7)
     }
 
     private func iconBubble(systemName: String) -> some View {
@@ -837,7 +989,56 @@ private struct SettingsSheet: View {
                 .fill(.white.opacity(0.12))
                 .frame(width: 40, height: 40)
             Image(systemName: systemName)
-                .foregroundStyle(.white.opacity(0.95))
+                .foregroundStyle(AppPalette.textPrimary)
         }
     }
+
+    private func legalLink(title: String, systemName: String, url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: 12) {
+                Image(systemName: systemName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppPalette.textPrimary)
+                    .frame(width: 30, height: 30)
+                    .background(AppPalette.accentPurple.opacity(0.14))
+                    .clipShape(Circle())
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppPalette.textPrimary)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppPalette.textSecondary)
+            }
+            .padding(.vertical, 4)
+        }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                AppFeedback.selection()
+            }
+        )
+    }
+}
+
+private func sectionIntro(_ text: String, accent: Color) -> some View {
+    Text(text)
+        .font(.subheadline)
+        .foregroundStyle(AppPalette.textSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [AppPalette.cardBase.opacity(0.98), accent.opacity(0.08)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(accent.opacity(0.14), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 }

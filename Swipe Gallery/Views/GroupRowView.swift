@@ -34,6 +34,9 @@ struct GroupRowView: View {
                 iconView
                 titleView
                 Spacer()
+                if group.isCompleted {
+                    completedBadge
+                }
                 countBadges
                 chevronView
             }
@@ -43,24 +46,39 @@ struct GroupRowView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(blockGradient)
+        .background(cardBackground)
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(blockColor.opacity(group.isCompleted ? 0.22 : 0.16), lineWidth: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .black.opacity(0.14), radius: 20, y: 10)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: Color.black.opacity(0.14), radius: 10, y: 5)
+        .overlay {
+            if group.isCompleted {
+                completionOverlay
+            }
+        }
+        .saturation(group.isCompleted ? 0.72 : 1)
     }
 
     private var iconView: some View {
         Image(systemName: iconName)
             .font(.title2)
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(AppPalette.textPrimary)
             .frame(width: 46, height: 46)
-            .background(.white.opacity(0.16))
+            .background {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [blockColor.opacity(0.20), AppPalette.cardBase.opacity(0.96)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
             .overlay {
                 Circle()
-                    .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                    .strokeBorder(AppPalette.glassBorder.opacity(0.20), lineWidth: 1)
             }
             .clipShape(Circle())
     }
@@ -68,8 +86,7 @@ struct GroupRowView: View {
     private var titleView: some View {
         Text(group.title)
             .font(titleFont)
-            .foregroundStyle(.white)
-            .strikethrough(group.isCompleted, color: .white.opacity(0.8))
+            .foregroundStyle(group.isCompleted ? AppPalette.textSecondary : AppPalette.textPrimary)
             .lineLimit(2)
             .minimumScaleFactor(0.85)
     }
@@ -90,17 +107,18 @@ struct GroupRowView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(.white.opacity(0.18))
+                    .fill(AppPalette.glassBorder.opacity(0.48))
                     .frame(height: 5)
-                Rectangle()
+                Capsule()
                     .fill(
                         LinearGradient(
-                            colors: [.white.opacity(0.92), .white.opacity(0.66)],
+                            colors: [blockColor.opacity(0.96), AppPalette.neonBlueGlow.opacity(0.82)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .frame(width: geo.size.width * progressPercent, height: 5)
+                    .shadow(color: blockColor.opacity(0.24), radius: 10, y: 0)
             }
         }
         .frame(height: 5)
@@ -111,15 +129,7 @@ struct GroupRowView: View {
     private var chevronView: some View {
         Image(systemName: "chevron.right")
             .font(.body.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.7))
-    }
-
-    private var blockGradient: some View {
-        LinearGradient(
-            colors: [blockColor, blockColor.opacity(0.82)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+            .foregroundStyle(AppPalette.textSecondary)
     }
 
     private var iconName: String {
@@ -186,39 +196,79 @@ struct GroupRowView: View {
         }
     }
 
+    private var completedBadge: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [blockColor.opacity(0.18), AppPalette.cardBase.opacity(0.96)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(blockColor)
+        }
+        .frame(width: 34, height: 34)
+        .overlay {
+            Circle()
+                .strokeBorder(AppPalette.glassBorder.opacity(0.18), lineWidth: 1)
+        }
+    }
+
     private func countBadge(text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.96))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.white.opacity(0.14))
-            .clipShape(Capsule())
+        AccentBadge(text: text, accent: blockColor, useMaterial: false)
+    }
+
+    private var completionOverlay: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .strokeBorder(blockColor.opacity(0.28), lineWidth: 1.2)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.white.opacity(0.03))
+            }
+    }
+
+    private var cardBackground: some View {
+        LinearGradient(
+            colors: [
+                AppPalette.cardBase.opacity(0.98),
+                blockColor.opacity(group.isCompleted ? 0.10 : 0.14)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 
 // MARK: - Previews
 
-#Preview("Grup kartı") {
-    GroupRowView(
-        group: MediaGroup(id: "1", title: "Bugün", type: .today, photoCount: 12, videoCount: 2),
-        includeVideos: true,
-        progressViewed: 3,
-        progressTotal: 14,
-        rowIndex: 0
-    )
-    .padding()
-    .environmentObject(AppPreferences())
-}
+struct GroupRowView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            GroupRowView(
+                group: MediaGroup(id: "1", title: "Bugün", type: .today, photoCount: 12, videoCount: 2),
+                includeVideos: true,
+                progressViewed: 3,
+                progressTotal: 14,
+                rowIndex: 0
+            )
+            .padding()
+            .environmentObject(AppPreferences())
+            .previewDisplayName("Grup karti")
 
-#Preview("Tamamlanmış kart") {
-    GroupRowView(
-        group: MediaGroup(id: "2", title: "OCA '25", type: .month(year: 2025, month: 1), isCompleted: true, photoCount: 80, videoCount: 4),
-        includeVideos: true,
-        progressViewed: 84,
-        progressTotal: 84,
-        rowIndex: 4
-    )
-    .padding()
-    .environmentObject(AppPreferences())
+            GroupRowView(
+                group: MediaGroup(id: "2", title: "OCA '25", type: .month(year: 2025, month: 1), isCompleted: true, photoCount: 80, videoCount: 4),
+                includeVideos: true,
+                progressViewed: 84,
+                progressTotal: 84,
+                rowIndex: 4
+            )
+            .padding()
+            .environmentObject(AppPreferences())
+            .previewDisplayName("Tamamlanmis kart")
+        }
+    }
 }

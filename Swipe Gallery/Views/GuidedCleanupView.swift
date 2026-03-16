@@ -14,20 +14,23 @@ struct GuidedCleanupView: View {
         Group {
             if isLoading {
                 loadingView
+            } else if steps.isEmpty {
+                emptyStateView
             } else {
                 GuidedCleanupStepListView(
                     title: preferences.text(.guidedCleanupTitle),
                     description: preferences.text(.guidedCleanupDescription),
                     steps: steps,
                     includeVideos: includeVideos,
-                    progressStore: progressStore
+                    progressStore: progressStore,
+                    autoPopWhenEmpty: false
                 )
             }
         }
         .background(screenBackground.ignoresSafeArea())
         .navigationTitle(preferences.text(.guidedCleanupTitle))
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: "\(includeVideos)-\(preferences.language.rawValue)") {
+        .task(id: loadTaskKey) {
             await loadSteps()
         }
     }
@@ -38,7 +41,7 @@ struct GuidedCleanupView: View {
                 .tint(.white)
             Text(preferences.text(.guidedCleanupDescription))
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(AppPalette.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 28)
         }
@@ -46,22 +49,43 @@ struct GuidedCleanupView: View {
     }
 
     private var screenBackground: some View {
-        LinearGradient(
-            colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+        AppBackgroundView(variant: .elevated)
+    }
+
+    private var emptyStateView: some View {
+        ContentUnavailableView(
+            preferences.text(.noMedia),
+            systemImage: "checkmark.seal",
+            description: Text(preferences.text(.guidedCleanupAllCaughtUp))
         )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var loadTaskKey: String {
+        let completed = progressStore.completedGroupIds.sorted().joined(separator: "|")
+        let progress = progressStore.groupProgress
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key):\($0.value.viewed)-\($0.value.total)" }
+            .joined(separator: "|")
+
+        return "\(includeVideos)-\(preferences.language.rawValue)-\(completed)-\(progress)"
     }
 
     private func loadSteps() async {
         isLoading = true
-        steps = await guidedService.fetchRootSteps(includeVideos: includeVideos, language: preferences.language)
+        steps = await guidedService.fetchRootSteps(
+            includeVideos: includeVideos,
+            language: preferences.language,
+            completedGroupIds: progressStore.completedGroupIds,
+            progressByGroupId: progressStore.groupProgress
+        )
         isLoading = false
     }
 }
 
 private struct GuidedCleanupStepListView: View {
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.dismiss) private var dismiss
 
     private struct LeafTarget: Identifiable, Hashable {
         let step: GuidedCleanupStep
@@ -77,29 +101,41 @@ private struct GuidedCleanupStepListView: View {
     let steps: [GuidedCleanupStep]
     let includeVideos: Bool
     @ObservedObject var progressStore: GroupProgressStore
+    let autoPopWhenEmpty: Bool
 
     @State private var selectedStep: GuidedCleanupStep?
     @State private var selectedLeaf: LeafTarget?
     @State private var resumePromptStep: GuidedCleanupStep?
+    @State private var didAutoPop = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text(description)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(AppPalette.textSecondary)
 
-                VStack(spacing: 14) {
-                    ForEach(steps) { step in
-                        let progress = progressSummary(for: step)
-                        GuidedCleanupCardView(
-                            step: step,
-                            includeVideos: includeVideos,
-                            progressViewed: progress.viewed,
-                            progressTotal: progress.total,
-                            isCompleted: isCompleted(step)
-                        ) {
-                            handleTap(step)
+                if visibleSteps.isEmpty {
+                    ContentUnavailableView(
+                        preferences.text(.noMedia),
+                        systemImage: "checkmark.seal",
+                        description: Text(preferences.text(.guidedCleanupAllCaughtUp))
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                } else {
+                    VStack(spacing: 14) {
+                        ForEach(visibleSteps) { step in
+                            let progress = progressSummary(for: step)
+                            GuidedCleanupCardView(
+                                step: step,
+                                includeVideos: includeVideos,
+                                progressViewed: progress.viewed,
+                                progressTotal: progress.total,
+                                isCompleted: isCompleted(step)
+                            ) {
+                                handleTap(step)
+                            }
                         }
                     }
                 }
@@ -108,12 +144,8 @@ private struct GuidedCleanupStepListView: View {
             .padding(.vertical, 16)
         }
         .background(
-            LinearGradient(
-                colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            AppBackgroundView(variant: .elevated)
+                .ignoresSafeArea()
         )
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -123,7 +155,8 @@ private struct GuidedCleanupStepListView: View {
                 description: step.detail,
                 steps: step.childSteps,
                 includeVideos: includeVideos,
-                progressStore: progressStore
+                progressStore: progressStore,
+                autoPopWhenEmpty: true
             )
         }
         .navigationDestination(item: $selectedLeaf) { target in
@@ -131,7 +164,10 @@ private struct GuidedCleanupStepListView: View {
                 step: target.step,
                 includeVideos: includeVideos,
                 initialIndex: target.startIndex,
-                progressStore: progressStore
+                progressStore: progressStore,
+                onCompleted: {
+                    openNextLeaf(after: target.step)
+                }
             )
         }
         .alert(AppText.value(for: .resumeTitle, language: currentLanguage), isPresented: resumePromptBinding) {
@@ -147,29 +183,73 @@ private struct GuidedCleanupStepListView: View {
         } message: {
             Text(AppText.value(for: .resumeMessage, language: currentLanguage))
         }
+        .onAppear {
+            didAutoPop = false
+            triggerAutoPopIfNeeded()
+        }
+        .onChange(of: visibleSteps.count) { _, _ in
+            triggerAutoPopIfNeeded()
+        }
     }
 
     private var currentLanguage: AppLanguage {
         preferences.language
     }
 
+    private var visibleSteps: [GuidedCleanupStep] {
+        steps.compactMap(filteredStep)
+    }
+
     private func handleTap(_ step: GuidedCleanupStep) {
         guard step.isLeaf else {
+            AppFeedback.selection()
             selectedStep = step
             return
         }
 
         guard shouldAskToResume(for: step) else {
+            AppFeedback.selection()
             selectedLeaf = LeafTarget(step: step, startIndex: 0)
             return
         }
 
+        AppFeedback.selection()
         resumePromptStep = step
+    }
+
+    private func openNextLeaf(after completedStep: GuidedCleanupStep) {
+        guard let currentIndex = visibleSteps.firstIndex(where: { $0.id == completedStep.id }) else {
+            selectedLeaf = nil
+            return
+        }
+
+        selectedLeaf = nil
+
+        guard let nextLeaf = visibleSteps
+            .dropFirst(currentIndex + 1)
+            .first(where: \.isLeaf) else {
+            AppFeedback.success()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            AppFeedback.selection()
+            selectedLeaf = LeafTarget(step: nextLeaf, startIndex: 0)
+        }
+    }
+
+    private func triggerAutoPopIfNeeded() {
+        guard autoPopWhenEmpty, visibleSteps.isEmpty, !didAutoPop else { return }
+        didAutoPop = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            AppFeedback.success()
+            dismiss()
+        }
     }
 
     private func shouldAskToResume(for step: GuidedCleanupStep) -> Bool {
         guard let progress = progressStore.progress(for: step.id) else { return false }
-        return progress.viewed > 0 && progress.viewed < progress.total
+        return progress.viewed > 0 && !progress.isComplete
     }
 
     private func openPendingStep(startFromSavedProgress: Bool) {
@@ -177,8 +257,10 @@ private struct GuidedCleanupStepListView: View {
         let startIndex: Int
 
         if startFromSavedProgress {
+            AppFeedback.selection()
             startIndex = progressStore.progress(for: step.id)?.viewed ?? 0
         } else {
+            AppFeedback.warning()
             progressStore.clearProgress(for: step.id)
             startIndex = 0
         }
@@ -202,10 +284,45 @@ private struct GuidedCleanupStepListView: View {
 
     private func isCompleted(_ step: GuidedCleanupStep) -> Bool {
         if step.isLeaf {
-            return progressStore.completedGroupIds.contains(step.id)
+            return isCompleted(step.id)
         }
 
         return !step.childSteps.isEmpty && step.childSteps.allSatisfy(isCompleted)
+    }
+
+    private func filteredStep(_ step: GuidedCleanupStep) -> GuidedCleanupStep? {
+        if step.isLeaf {
+            if isCompleted(step.id) {
+                return nil
+            }
+
+            if let progress = progressStore.progress(for: step.id), progress.isComplete {
+                return nil
+            }
+
+            return step
+        }
+
+        let filteredChildren = step.childSteps.compactMap(filteredStep)
+        guard !filteredChildren.isEmpty else { return nil }
+
+        let counts = filteredChildren.reduce(into: (photos: 0, videos: 0)) { partial, child in
+            partial.photos += child.photoCount
+            partial.videos += child.videoCount
+        }
+
+        return GuidedCleanupStep(
+            id: step.id,
+            title: step.title,
+            subtitle: step.subtitle,
+            detail: step.detail,
+            kind: step.kind,
+            style: step.style,
+            dateRange: step.dateRange,
+            photoCount: counts.photos,
+            videoCount: counts.videos,
+            childSteps: filteredChildren
+        )
     }
 
     private var resumePromptBinding: Binding<Bool> {
@@ -218,9 +335,14 @@ private struct GuidedCleanupStepListView: View {
             }
         )
     }
+
+    private func isCompleted(_ groupId: String) -> Bool {
+        progressStore.completedGroupIds.contains(groupId) || (progressStore.progress(for: groupId)?.isComplete ?? false)
+    }
 }
 
 private struct GuidedCleanupCardView: View {
+    @EnvironmentObject private var preferences: AppPreferences
     let step: GuidedCleanupStep
     let includeVideos: Bool
     let progressViewed: Int
@@ -242,24 +364,27 @@ private struct GuidedCleanupCardView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(step.title)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                            .strikethrough(isCompleted, color: .white.opacity(0.75))
+                            .foregroundStyle(isCompleted ? AppPalette.textSecondary : AppPalette.textPrimary)
 
                         Text(step.subtitle)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.88))
+                            .foregroundStyle(isCompleted ? AppPalette.textMuted : AppPalette.textSecondary)
 
                         Text(step.detail)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.72))
+                            .foregroundStyle(isCompleted ? AppPalette.textMuted.opacity(0.8) : AppPalette.textMuted)
                             .lineLimit(3)
                     }
 
                     Spacer(minLength: 12)
 
-                    Image(systemName: "chevron.right")
+                    if isCompleted {
+                        completedBadge
+                    }
+
+                    Image(systemName: isCompleted ? "checkmark" : "chevron.right")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(isCompleted ? accentColor.opacity(0.96) : AppPalette.textSecondary)
                 }
 
                 HStack(spacing: 8) {
@@ -277,20 +402,27 @@ private struct GuidedCleanupCardView: View {
                         HStack {
                             Text("\(progressViewed)/\(progressTotal)")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(AppPalette.textPrimary)
                             Spacer()
                             Text("%\(Int(progressFraction * 100))")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.72))
+                                .foregroundStyle(AppPalette.textSecondary)
                         }
 
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
                                 Capsule()
-                                    .fill(.white.opacity(0.16))
+                                    .fill(AppPalette.glassBorder.opacity(0.48))
                                 Capsule()
-                                    .fill(.white.opacity(0.92))
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [accentColor.opacity(0.96), AppPalette.neonBlueGlow.opacity(0.78)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .frame(width: max(10, proxy.size.width * progressFraction))
+                                    .shadow(color: accentColor.opacity(0.24), radius: 10, y: 0)
                             }
                         }
                         .frame(height: 6)
@@ -299,49 +431,49 @@ private struct GuidedCleanupCardView: View {
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(backgroundGradient)
+            .glassCard(accent: accentColor, cornerRadius: 26, strokeOpacity: 0.18)
             .overlay {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+                if isCompleted {
+                    completionOverlay
+                }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+            .saturation(isCompleted ? 0.72 : 1)
         }
         .buttonStyle(.plain)
     }
 
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: gradientColors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var gradientColors: [Color] {
+    private var accentColor: Color {
         switch step.style {
         case .hero:
-            return [AppPalette.accentPurple, AppPalette.accentPink]
+            return AppPalette.accentPurple
         case .highlight:
-            return [AppPalette.accentBlue, Color(red: 0.29, green: 0.45, blue: 0.97)]
+            return AppPalette.accentBlue
         case .neutral:
-            return [Color(red: 0.23, green: 0.36, blue: 0.82), Color(red: 0.34, green: 0.42, blue: 0.90)]
+            return Color(red: 0.34, green: 0.50, blue: 0.96)
         case .archive:
-            return [Color(red: 0.22, green: 0.29, blue: 0.58), Color(red: 0.19, green: 0.24, blue: 0.48)]
+            return Color(red: 0.40, green: 0.46, blue: 0.84)
         }
     }
 
     private var iconBubble: some View {
         Image(systemName: iconName)
             .font(.title3.weight(.bold))
-            .foregroundStyle(.white.opacity(0.95))
+            .foregroundStyle(AppPalette.textPrimary)
             .frame(width: 48, height: 48)
-            .background(.white.opacity(0.16))
+            .background {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        Circle()
+                            .fill(accentColor.opacity(0.18))
+                    }
+            }
             .overlay {
                 Circle()
-                    .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                    .strokeBorder(AppPalette.glassBorder.opacity(0.18), lineWidth: 1)
             }
             .clipShape(Circle())
+            .shadow(color: accentColor.opacity(0.14), radius: 12, y: 6)
     }
 
     private var iconName: String {
@@ -362,13 +494,28 @@ private struct GuidedCleanupCardView: View {
     }
 
     private func badge(text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.95))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.white.opacity(0.14))
-            .clipShape(Capsule())
+        AccentBadge(text: text, accent: accentColor)
+    }
+
+    private var completedBadge: some View {
+        ZStack {
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Circle()
+                        .fill(accentColor.opacity(0.16))
+                }
+
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(accentColor)
+        }
+        .frame(width: 34, height: 34)
+        .overlay {
+            Circle()
+                .strokeBorder(AppPalette.glassBorder.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: accentColor.opacity(0.18), radius: 12, y: 4)
     }
 
     private var childCountText: String {
@@ -379,6 +526,22 @@ private struct GuidedCleanupCardView: View {
     private var currentLanguage: AppLanguage {
         preferences.language
     }
+
+    private var completionOverlay: some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .strokeBorder(accentColor.opacity(0.34), lineWidth: 1.3)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.white.opacity(0.03))
+            }
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(accentColor.opacity(0.18))
+                    .frame(width: 92, height: 92)
+                    .blur(radius: 24)
+                    .offset(x: 14, y: -18)
+            }
+    }
 }
 
 private struct GuidedCleanupSessionView: View {
@@ -387,6 +550,7 @@ private struct GuidedCleanupSessionView: View {
     let includeVideos: Bool
     let initialIndex: Int
     @ObservedObject var progressStore: GroupProgressStore
+    var onCompleted: (() -> Void)? = nil
     @StateObject private var deleteQueue = DeleteQueueService()
 
     var body: some View {
@@ -395,6 +559,7 @@ private struct GuidedCleanupSessionView: View {
                 group: group,
                 includeVideos: includeVideos,
                 initialIndex: initialIndex,
+                onCompleted: onCompleted,
                 deleteQueue: deleteQueue,
                 progressStore: progressStore
             )

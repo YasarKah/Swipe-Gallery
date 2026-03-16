@@ -20,7 +20,6 @@ struct ReviewDeleteView: View {
 
     @State private var isDeleting = false
     @State private var errorMessage: String?
-    @State private var deletedSuccessfully = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
 
@@ -44,7 +43,10 @@ struct ReviewDeleteView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(preferences.text(.close)) { onDismiss() }
+                    Button(preferences.text(.close)) {
+                        AppFeedback.selection()
+                        onDismiss()
+                    }
                 }
             }
             .alert(preferences.text(.error), isPresented: .constant(errorMessage != nil)) {
@@ -71,7 +73,7 @@ struct ReviewDeleteView: View {
         VStack(spacing: 0) {
             Text(preferences.format(.deletingCountFormat, deleteQueue.items.count))
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(AppPalette.textSecondary)
                 .padding(.top, 8)
 
             ScrollView {
@@ -86,8 +88,12 @@ struct ReviewDeleteView: View {
                 .padding()
             }
 
-            statsSection
-            bottomActions
+            VStack(spacing: 14) {
+                statsSection
+                bottomActions
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
     }
 
@@ -95,40 +101,42 @@ struct ReviewDeleteView: View {
         VStack(spacing: 10) {
             HStack(spacing: 20) {
                 statBadge(text: "📷 \(photoCount)")
-                statBadge(text: "🎬 \(videoCount)")
+                if videoCount > 0 {
+                    statBadge(text: "🎬 \(videoCount)")
+                }
             }
             HStack(spacing: 16) {
                 Text(preferences.format(.deletedCountFormat, deleteQueue.items.count))
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(AppPalette.textSecondary)
                 Text(preferences.format(.viewedPercentFormat, viewedPercent))
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(AppPalette.textSecondary)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(AppPalette.surface)
+        .padding(.vertical, 16)
+        .glassCard(accent: AppPalette.accentBlue, cornerRadius: 22, strokeOpacity: 0.16, shadowOpacity: 0.7)
     }
 
     private var bottomActions: some View {
         VStack(spacing: 12) {
             if isDeleting {
                 ProgressView(preferences.text(.deleting))
+                    .tint(AppPalette.textPrimary)
             } else {
-                Button(role: .destructive) {
+                GlassActionButton(
+                    title: preferences.format(.deleteAllFormat, deleteQueue.items.count),
+                    systemImage: "trash.fill",
+                    accent: AppPalette.danger,
+                    isEnabled: !deleteQueue.items.isEmpty
+                ) {
                     Task { await confirmAndDelete() }
-                } label: {
-                    Text(preferences.format(.deleteAllFormat, deleteQueue.items.count))
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppPalette.danger)
-                .disabled(deleteQueue.items.isEmpty)
             }
         }
-        .padding()
-        .background(AppPalette.surface)
+        .padding(14)
+        .glassCard(accent: AppPalette.danger, cornerRadius: 22, strokeOpacity: 0.16, shadowOpacity: 0.7)
     }
 
     private func confirmAndDelete() async {
@@ -136,9 +144,10 @@ struct ReviewDeleteView: View {
         defer { isDeleting = false }
         do {
             try await deleteQueue.deleteAll()
-            deletedSuccessfully = true
+            AppFeedback.success()
             onDismiss()
         } catch {
+            AppFeedback.error()
             errorMessage = preferences.format(.deleteFailedFormat, error.localizedDescription)
         }
     }
@@ -154,15 +163,11 @@ struct ReviewDeleteView: View {
     }
 
     private var screenBackground: some View {
-        LinearGradient(
-            colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        AppBackgroundView(variant: .elevated)
     }
 }
 
-// MARK: - Grid hücresi: küçük önizleme + "Geri al" butonu
+// MARK: - Grid hücresi: küçük önizleme + sade geri alma butonu
 
 private struct ReviewDeleteRowView: View {
     @EnvironmentObject private var preferences: AppPreferences
@@ -174,8 +179,11 @@ private struct ReviewDeleteRowView: View {
     var body: some View {
         VStack(spacing: 4) {
             thumbnailView
-            Button(preferences.text(.remove), action: onRemove)
-                .font(.caption2)
+            GlassIconButton(systemImage: "arrow.uturn.backward", accent: AppPalette.accentPurple, size: 36) {
+                AppFeedback.selection()
+                onRemove()
+            }
+            .accessibilityLabel(preferences.text(.remove))
         }
     }
 
@@ -192,7 +200,7 @@ private struct ReviewDeleteRowView: View {
         }
         .frame(height: 100)
         .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .glassCard(accent: AppPalette.accentPurple, cornerRadius: 12, strokeOpacity: 0.14, shadowOpacity: 0.5)
         .onAppear { loadThumbnail() }
     }
 
@@ -209,15 +217,18 @@ private struct ReviewDeleteRowView: View {
     }
 }
 
-#Preview("Son kontrol") {
-    ReviewDeleteView(
-        deleteQueue: DeleteQueueService(),
-        groupTitle: "OCA '25",
-        totalInGroup: 84,
-        photoCount: 70,
-        videoCount: 14,
-        viewedCount: 84,
-        onDismiss: {}
-    )
-    .environmentObject(AppPreferences())
+struct ReviewDeleteView_Previews: PreviewProvider {
+    static var previews: some View {
+        ReviewDeleteView(
+            deleteQueue: DeleteQueueService(),
+            groupTitle: "OCA '25",
+            totalInGroup: 84,
+            photoCount: 70,
+            videoCount: 14,
+            viewedCount: 84,
+            onDismiss: {}
+        )
+        .environmentObject(AppPreferences())
+        .previewDisplayName("Son kontrol")
+    }
 }

@@ -16,6 +16,10 @@ struct GroupProgress: Equatable {
         guard total > 0 else { return 0 }
         return min(1, Double(viewed) / Double(total))
     }
+
+    var isComplete: Bool {
+        total > 0 && viewed >= total
+    }
 }
 
 final class GroupProgressStore: ObservableObject {
@@ -36,7 +40,12 @@ final class GroupProgressStore: ObservableObject {
 
     func setProgress(groupId: String, viewed: Int, total: Int) {
         guard total > 0 else { return }
-        groupProgress[groupId] = GroupProgress(viewed: viewed, total: total)
+        let progress = GroupProgress(viewed: viewed, total: total)
+        groupProgress[groupId] = progress
+        if progress.isComplete {
+            completedGroupIds.insert(groupId)
+            saveCompleted()
+        }
         saveProgress()
     }
 
@@ -60,6 +69,7 @@ final class GroupProgressStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([String: GroupProgress].self, from: data) {
             groupProgress = decoded
         }
+        migrateCompletedIdsFromProgress()
     }
 
     private func saveCompleted() {
@@ -70,6 +80,21 @@ final class GroupProgressStore: ObservableObject {
     private func saveProgress() {
         guard let data = try? JSONEncoder().encode(groupProgress) else { return }
         UserDefaults.standard.set(data, forKey: progressKey)
+    }
+
+    private func migrateCompletedIdsFromProgress() {
+        let completedFromProgress = groupProgress
+            .filter { $0.value.isComplete }
+            .map(\.key)
+
+        guard !completedFromProgress.isEmpty else { return }
+
+        let originalCount = completedGroupIds.count
+        completedGroupIds.formUnion(completedFromProgress)
+
+        if completedGroupIds.count != originalCount {
+            saveCompleted()
+        }
     }
 }
 

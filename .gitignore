@@ -1,0 +1,25 @@
+.DS_Store
+
+# Xcode user data
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Build products
+build/
+DerivedData/
+.xcode-build/
+.xcode-build-tests/
+*.xcresult
+
+# SwiftPM
+.build/
+
+# Fastlane screenshots and reports
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Logs
+*.log

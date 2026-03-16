@@ -64,19 +64,29 @@ struct MediaGroup: Identifiable, Hashable {
 }
 
 enum AppPalette {
-    static let backgroundTop = Color(red: 0.07, green: 0.09, blue: 0.18)
-    static let backgroundBottom = Color(red: 0.11, green: 0.08, blue: 0.22)
-    static let backgroundLiftTop = Color(red: 0.16, green: 0.21, blue: 0.33)
-    static let backgroundLiftBottom = Color(red: 0.18, green: 0.14, blue: 0.34)
-    static let cardBase = Color(red: 0.10, green: 0.12, blue: 0.20)
-    static let surface = Color.white.opacity(0.10)
+    static let backgroundTop = Color(red: 0.04, green: 0.06, blue: 0.14)
+    static let backgroundBottom = Color(red: 0.08, green: 0.07, blue: 0.19)
+    static let backgroundLiftTop = Color(red: 0.12, green: 0.16, blue: 0.28)
+    static let backgroundLiftBottom = Color(red: 0.14, green: 0.11, blue: 0.28)
+    static let cardBase = Color(red: 0.10, green: 0.12, blue: 0.22)
+    static let surface = Color.white.opacity(0.08)
+    static let glassSurface = Color(red: 0.16, green: 0.20, blue: 0.34).opacity(0.44)
+    static let glassSurfaceStrong = Color.white.opacity(0.12)
     static let border = Color.white.opacity(0.12)
+    static let glassBorder = Color.white.opacity(0.18)
+    static let glassHighlight = Color.white.opacity(0.34)
     static let softBorder = Color.white.opacity(0.05)
-    static let accentBlue = Color(red: 0.33, green: 0.56, blue: 0.98)
-    static let accentPurple = Color(red: 0.54, green: 0.37, blue: 0.95)
-    static let accentPink = Color(red: 0.84, green: 0.41, blue: 0.87)
+    static let accentBlue = Color(red: 0.35, green: 0.61, blue: 1.00)
+    static let accentPurple = Color(red: 0.59, green: 0.42, blue: 0.99)
+    static let accentPink = Color(red: 0.82, green: 0.45, blue: 0.93)
+    static let neonBlueGlow = Color(red: 0.42, green: 0.73, blue: 1.00)
+    static let neonPurpleGlow = Color(red: 0.67, green: 0.51, blue: 1.00)
     static let success = Color(red: 0.31, green: 0.82, blue: 0.63)
-    static let danger = Color(red: 0.98, green: 0.40, blue: 0.51)
+    static let danger = Color(red: 0.99, green: 0.42, blue: 0.58)
+    static let shadowDeep = Color.black.opacity(0.28)
+    static let textPrimary = Color.white.opacity(0.96)
+    static let textSecondary = Color.white.opacity(0.76)
+    static let textMuted = Color.white.opacity(0.60)
     static let defaultCardAspectRatio: CGFloat = 3 / 4
 
     static let rowColors: [Color] = [
@@ -104,7 +114,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .turkish: return "Turkce"
+        case .turkish: return "Türkçe"
         case .english: return "English"
         }
     }
@@ -152,6 +162,12 @@ enum AppTextKey {
     case includeVideosDescription
     case language
     case languageDescription
+    case legal
+    case legalDescription
+    case privacyPolicy
+    case termsOfUse
+    case support
+    case supportDescription
     case sort
     case sortNewestFirst
     case sortOldestFirst
@@ -203,6 +219,7 @@ enum AppTextKey {
     case guidedCleanupHomeSubtitle
     case guidedCleanupHomeDetail
     case guidedCleanupDescription
+    case guidedCleanupAllCaughtUp
     case guidedRecentMonthsTitle
     case guidedRecentMonthsSubtitle
     case guidedRecentMonthsDetail
@@ -242,6 +259,7 @@ enum AppTextKey {
     case photo
     case livePhotoType
     case remove
+    case completed
 }
 
 enum AppText {
@@ -249,117 +267,125 @@ enum AppText {
         switch language {
         case .turkish:
             switch key {
-            case .appTitle: return "GalleryCleaner"
-            case .loadingGallery: return "Galeri yukleniyor..."
-            case .accessRequired: return "Erisim gerekli"
-            case .noPhotosFound: return "Fotograf bulunamadi"
-            case .noPhotosDescription: return "Galeri erisimi verilmedi veya secilen fotograf yok. Ayarlar'dan uygulama icin Fotograflar erisimini acin."
-            case .groupsTitle: return "Temizlik gruplari"
+            case .appTitle: return "Smart Swipe"
+            case .loadingGallery: return "Galeri yükleniyor..."
+            case .accessRequired: return "Erişim gerekli"
+            case .noPhotosFound: return "Fotoğraf bulunamadı"
+            case .noPhotosDescription: return "Galeri erişimi verilmedi veya seçilen fotoğraf yok. Ayarlar'dan uygulama için Fotoğraflar erişimini açın."
+            case .groupsTitle: return "Temizlik grupları"
             case .resumeTitle: return "Devam etmek ister misin?"
-            case .resumeMessage: return "Bu tarihte daha once yarim kalmissin. Kaldigin yerden devam edebilir ya da basa donebilirsin."
-            case .continueFromWhereLeft: return "Kaldigin yerden devam et"
-            case .restartFromBeginning: return "Bastan basla"
-            case .cancel: return "Iptal"
+            case .resumeMessage: return "Bu tarihte daha önce yarım kalmışsın. Kaldığın yerden devam edebilir ya da başa dönebilirsin."
+            case .continueFromWhereLeft: return "Kaldığın yerden devam et"
+            case .restartFromBeginning: return "Baştan başla"
+            case .cancel: return "İptal"
             case .settings: return "Ayarlar"
-            case .settingsDescription: return "Temizlik akisini ve uygulama dilini buradan yonetebilirsin."
-            case .includeVideos: return "Videolari dahil et"
-            case .includeVideosDescription: return "Gruplar fotograf ve videolari birlikte gostersin"
+            case .settingsDescription: return "Temizlik akışını ve uygulama dilini buradan yönetebilirsin."
+            case .includeVideos: return "Videoları dahil et"
+            case .includeVideosDescription: return "Gruplar fotoğraf ve videoları birlikte göstersin"
             case .language: return "Dil"
-            case .languageDescription: return "Uygulama metinlerini degistir"
-            case .sort: return "Siralama"
+            case .languageDescription: return "Uygulama metinlerini değiştir"
+            case .legal: return "Yasal ve Destek"
+            case .legalDescription: return "Gizlilik politikası, kullanım şartları ve destek sayfasına buradan ulaşabilirsin."
+            case .privacyPolicy: return "Gizlilik Politikası"
+            case .termsOfUse: return "Kullanım Şartları"
+            case .support: return "Destek"
+            case .supportDescription: return "Sorular, geri bildirimler ve yayın bağlantıları için destek sayfasını aç."
+            case .sort: return "Sıralama"
             case .sortNewestFirst: return "Yeniden eskiye"
             case .sortOldestFirst: return "Eskiden yeniye"
-            case .sortLargestFirst: return "Buyukten kucuge"
-            case .sortSmallestFirst: return "Kucukten buyuge"
-            case .loading: return "Yukleniyor..."
+            case .sortLargestFirst: return "Büyükten küçüğe"
+            case .sortSmallestFirst: return "Küçükten büyüğe"
+            case .loading: return "Yükleniyor..."
             case .noMedia: return "Medya yok"
-            case .noMediaDescription: return "Bu grupta fotograf veya video bulunamadi."
-            case .exitPromptTitle: return "Cikmak istiyor musun?"
-            case .exitPromptMessage: return "Istersen kaldigin yeri saklayabilir, yaptigin silme secimlerini hemen uygulayabilir ya da hicbir seyi kaydetmeden cikabilirsin."
-            case .saveAndExit: return "Kaydet ve cik"
-            case .exitWithoutSaving: return "Kaydetmeden cik"
+            case .noMediaDescription: return "Bu grupta fotoğraf veya video bulunamadı."
+            case .exitPromptTitle: return "Çıkmak istiyor musun?"
+            case .exitPromptMessage: return "İstersen kaldığın yeri saklayabilir, yaptığın silme seçimlerini hemen uygulayabilir ya da hiçbir şeyi kaydetmeden çıkabilirsin."
+            case .saveAndExit: return "Kaydet ve çık"
+            case .exitWithoutSaving: return "Kaydetmeden çık"
             case .deleteNow: return "Sil"
             case .keep: return "Tut"
             case .delete: return "Sil"
-            case .live: return "Canli"
-            case .finalReview: return "Son kontrol"
+            case .live: return "Canlı"
+            case .finalReview: return "Son Kontrol"
             case .close: return "Kapat"
-            case .noItemsToDelete: return "Silinecek oge yok"
-            case .noItemsToDeleteDescription: return "Tum fotograflari tuttun veya listeden cikardin."
-            case .deletingCountFormat: return "%d oge silinecek"
+            case .noItemsToDelete: return "Silinecek öğe yok"
+            case .noItemsToDeleteDescription: return "Tüm fotoğrafları tuttun veya listeden çıkardın."
+            case .deletingCountFormat: return "%d öğe silinecek"
             case .deletedCountFormat: return "Silinen: %d"
-            case .viewedPercentFormat: return "Goruntulenen: %% %d"
+            case .viewedPercentFormat: return "Görüntülenen: %% %d"
             case .deleteAllFormat: return "Hepsini sil (%d)"
             case .deleting: return "Siliniyor..."
             case .error: return "Hata"
             case .ok: return "Tamam"
-            case .deleteFailedFormat: return "Silme basarisiz: %@"
-            case .smartDescription: return "Smart alani benzer cekimleri, ekran goruntulerini ve zayif kareleri senin icin ayirir. En hizli temizlik akisi icin once buradan baslayabilirsin."
-            case .monthCollectionDescription: return "Bu grupta daha az fotograftan olusan aylar birlikte tutulur. Icine girince aylari tek tek inceleyebilirsin."
-            case .similarDescription: return "Bu bolumde birbirine cok benzeyen kareler bir araya getirilir. Genelde ayni anin tekrarlarini hizlica azaltmak icin en iyi alan burasi."
-            case .allSimilar: return "Tum benzerler"
-            case .screenshotsTitle: return "Ekran Goruntuleri"
-            case .blurryTitle: return "Bulaniklar"
+            case .deleteFailedFormat: return "Silme başarısız: %@"
+            case .smartDescription: return "Smart alanı benzer çekimleri, ekran görüntülerini ve zayıf kareleri senin için ayırır. En hızlı temizlik akışı için önce buradan başlayabilirsin."
+            case .monthCollectionDescription: return "Bu grupta daha az fotoğraftan oluşan aylar birlikte tutulur. İçine girince ayları tek tek inceleyebilirsin."
+            case .similarDescription: return "Bu bölümde birbirine çok benzeyen kareler bir araya getirilir. Genelde aynı anın tekrarlarını hızlıca azaltmak için en iyi alan burası."
+            case .allSimilar: return "Tüm benzerler"
+            case .screenshotsTitle: return "Ekran Görüntüleri"
+            case .blurryTitle: return "Bulanıklar"
             case .smartTitle: return "Smart"
-            case .todayTitle: return "Bugun"
+            case .todayTitle: return "Bugün"
             case .recentTitle: return "Son eklenenler"
             case .randomTitle: return "Rastgele"
-            case .smallMonthsTitle: return "Daha az fotografli aylar"
+            case .smallMonthsTitle: return "Daha az fotoğraflı aylar"
             case .similarTitle: return "Benzerler"
-            case .quickCleanup: return "hizli temizlik"
-            case .weakFrames: return "zayif kareler"
+            case .quickCleanup: return "hızlı temizlik"
+            case .weakFrames: return "zayıf kareler"
             case .monthCountFormat: return "🗂️ %d ay"
             case .groupCountFormat: return "✨ %d grup"
-            case .clusterCountFormat: return "🧠 %d kume"
+            case .clusterCountFormat: return "🧠 %d küme"
             case .allSimilarsCountFormat: return "📚 %d benzer"
             case .guidedCleanupTitle: return "Guided Cleanup"
             case .guidedCleanupHomeTitle: return "Guided Cleanup"
-            case .guidedCleanupHomeSubtitle: return "Nereden baslayacagini sistem secsin"
-            case .guidedCleanupHomeDetail: return "En yeni aydan eski yillara dogru ilerleyen rehberli bir akisla daha az dusunerek daha hizli temizlik yap."
-            case .guidedCleanupDescription: return "Bu alan galerini yakindan eskiye dogru mantikli adimlara ayirir. Her adimda neden buradan baslaman gerektigini gorebilir, aylara inip tek tek temizleyebilirsin."
+            case .guidedCleanupHomeSubtitle: return "Nereden başlayacağını sistem seçsin"
+            case .guidedCleanupHomeDetail: return "En yeni aydan eski yıllara doğru ilerleyen rehberli bir akışla daha az düşünerek daha hızlı temizlik yap."
+            case .guidedCleanupDescription: return "Bu alan galerini yakından eskiye doğru mantıklı adımlara ayırır. Her adımda neden buradan başlaman gerektiğini görebilir, aylara inip tek tek temizleyebilirsin."
+            case .guidedCleanupAllCaughtUp: return "Rehberli temizlikte önerilecek yeni bir tarih kalmadı. İstersen normal gruplardan devam edebilirsin."
             case .guidedRecentMonthsTitle: return "Son aylar"
-            case .guidedRecentMonthsSubtitle: return "En yeni karmasa"
-            case .guidedRecentMonthsDetail: return "Hatirasi en taze olan tekrarlar genelde burada birikir. Ilk olarak son aylari temizlemek karar vermeyi kolaylastirir."
-            case .guidedCurrentYearTitle: return "Bu yilin geri kalani"
-            case .guidedCurrentYearSubtitle: return "Yila hizlica toparlan"
-            case .guidedCurrentYearDetail: return "Son aylardan sonra bu yilin diger aylarini tek tek gecerek galerini temiz bir cizgiye getirebilirsin."
-            case .guidedLastYearTitle: return "Gecen yil"
-            case .guidedLastYearSubtitle: return "Artik daha kolay vedalasabilecegin kareler"
-            case .guidedLastYearDetail: return "Bir yil onceki fotograflarda gereksiz tekrarlar daha net gorunur. Aylara ayrilmis akista guvenli ilerleyebilirsin."
-            case .guidedOlderYearsTitle: return "Daha eski yillar"
-            case .guidedOlderYearsSubtitle: return "Arsivi parcalara ayir"
-            case .guidedOlderYearsDetail: return "Eski arsivi once yillara, sonra aylara bolmek buyuk galerilerde bunalmayi azaltir."
+            case .guidedRecentMonthsSubtitle: return "En yeni karmaşa"
+            case .guidedRecentMonthsDetail: return "Hatırası en taze olan tekrarlar genelde burada birikir. İlk olarak son ayları temizlemek karar vermeyi kolaylaştırır."
+            case .guidedCurrentYearTitle: return "Bu yılın geri kalanı"
+            case .guidedCurrentYearSubtitle: return "Yılı hızlıca toparla"
+            case .guidedCurrentYearDetail: return "Son aylardan sonra bu yılın diğer aylarını tek tek geçerek galerini temiz bir çizgiye getirebilirsin."
+            case .guidedLastYearTitle: return "Geçen yıl"
+            case .guidedLastYearSubtitle: return "Artık daha kolay vedalaşabileceğin kareler"
+            case .guidedLastYearDetail: return "Bir yıl önceki fotoğraflarda gereksiz tekrarlar daha net görünür. Aylara ayrılmış akışta güvenli ilerleyebilirsin."
+            case .guidedOlderYearsTitle: return "Daha eski yıllar"
+            case .guidedOlderYearsSubtitle: return "Arşivi parçalara ayır"
+            case .guidedOlderYearsDetail: return "Eski arşivi önce yıllara, sonra aylara bölmek büyük galerilerde bunalmayı azaltır."
             case .guidedYearTitleFormat: return "%d"
-            case .guidedYearSubtitle: return "Bir yili ay ay temizle"
-            case .guidedYearDetailFormat: return "Bu yilda %d ay var. Ilerledikce eski arsiv daha yonetilebilir hale gelir."
-            case .guidedCurrentMonthSubtitle: return "Su an cektiklerin"
-            case .guidedMonthSubtitle: return "Tek ay odagi"
-            case .guidedMonthDetailPhotosFormat: return "%d fotograf iceren tek bir ay. Dikkatin dagilmadan temizleyebilirsin."
-            case .guidedMonthDetailWithVideosFormat: return "%d fotograf ve %d video iceren tek bir ay. Kararlari bolmeden ilerleyebilirsin."
-            case .guidedStepCountFormat: return "🪜 %d adim"
+            case .guidedYearSubtitle: return "Bir yılı ay ay temizle"
+            case .guidedYearDetailFormat: return "Bu yılda %d ay var. İlerledikçe eski arşiv daha yönetilebilir hâle gelir."
+            case .guidedCurrentMonthSubtitle: return "Şu an çektiklerin"
+            case .guidedMonthSubtitle: return "Tek ay odağı"
+            case .guidedMonthDetailPhotosFormat: return "%d fotoğraf içeren tek bir ay. Dikkatin dağılmadan temizleyebilirsin."
+            case .guidedMonthDetailWithVideosFormat: return "%d fotoğraf ve %d video içeren tek bir ay. Kararları bölmeden ilerleyebilirsin."
+            case .guidedStepCountFormat: return "🪜 %d adım"
             case .undo: return "Geri al"
-            case .info: return "Fotograf Bilgileri"
-            case .photoInfoDescription: return "Bu ekranda fotografa ait teknik detaylari gorebilirsin."
-            case .featureUnavailable: return "Bu ozellik kullanilamiyor"
-            case .featureUnavailableDescription: return "Bu fotografin acilabilecek ekstra bir ozelligi bulunamadi."
-            case .preparingLivePhoto: return "Canli fotograf hazirlaniyor..."
+            case .info: return "Fotoğraf Bilgileri"
+            case .photoInfoDescription: return "Bu ekranda fotoğrafa ait teknik detayları görebilirsin."
+            case .featureUnavailable: return "Bu özellik kullanılamıyor"
+            case .featureUnavailableDescription: return "Bu fotoğrafın açılabilecek ekstra bir özelliği bulunamadı."
+            case .preparingLivePhoto: return "Canlı fotoğraf hazırlanıyor..."
             case .status: return "Durum"
             case .unknown: return "Bilinmiyor"
-            case .type: return "Tur"
+            case .type: return "Tür"
             case .size: return "Boyut"
-            case .fileExtension: return "Uzanti"
+            case .fileExtension: return "Uzantı"
             case .file: return "Dosya"
-            case .resolution: return "Cozunurluk"
-            case .duration: return "Sure"
+            case .resolution: return "Çözünürlük"
+            case .duration: return "Süre"
             case .date: return "Tarih"
             case .location: return "Konum"
-            case .photo: return "Fotograf"
-            case .livePhotoType: return "Canli Fotograf"
+            case .photo: return "Fotoğraf"
+            case .livePhotoType: return "Canlı Fotoğraf"
             case .remove: return "Geri al"
+            case .completed: return "Tamamlandı"
             }
         case .english:
             switch key {
-            case .appTitle: return "GalleryCleaner"
+            case .appTitle: return "Smart Swipe"
             case .loadingGallery: return "Loading your library..."
             case .accessRequired: return "Access required"
             case .noPhotosFound: return "No photos found"
@@ -376,6 +402,12 @@ enum AppText {
             case .includeVideosDescription: return "Show photos and videos together in groups"
             case .language: return "Language"
             case .languageDescription: return "Change the app language"
+            case .legal: return "Legal & Support"
+            case .legalDescription: return "Open the privacy policy, terms of use, and support page from here."
+            case .privacyPolicy: return "Privacy Policy"
+            case .termsOfUse: return "Terms of Use"
+            case .support: return "Support"
+            case .supportDescription: return "Open the support page for questions, feedback, and publication links."
             case .sort: return "Sort"
             case .sortNewestFirst: return "Newest to oldest"
             case .sortOldestFirst: return "Oldest to newest"
@@ -427,6 +459,7 @@ enum AppText {
             case .guidedCleanupHomeSubtitle: return "Let the app choose where to start"
             case .guidedCleanupHomeDetail: return "Move from recent months into older years with a guided flow that reduces decision fatigue and helps you clean faster."
             case .guidedCleanupDescription: return "This area breaks your library into sensible steps from recent to old. Each step explains why it matters, then lets you drill down month by month."
+            case .guidedCleanupAllCaughtUp: return "There are no new guided date suggestions left right now. You can continue from the regular cleanup groups if you want."
             case .guidedRecentMonthsTitle: return "Recent months"
             case .guidedRecentMonthsSubtitle: return "Newest clutter first"
             case .guidedRecentMonthsDetail: return "The easiest decisions are usually in your freshest months. Start here to trim repeats while the moments still feel familiar."
@@ -466,6 +499,7 @@ enum AppText {
             case .photo: return "Photo"
             case .livePhotoType: return "Live Photo"
             case .remove: return "Restore"
+            case .completed: return "Completed"
             }
         }
     }

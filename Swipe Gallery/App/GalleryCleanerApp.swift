@@ -17,11 +17,14 @@ struct GalleryCleanerApp: App {
                 .environmentObject(preferences)
                 .environment(\.locale, Locale(identifier: preferences.language.localeIdentifier))
                 .fontDesign(.rounded)
+                .tint(AppPalette.accentBlue)
         }
     }
 }
 
-#Preview("App") {
-    HomeView()
-        .environmentObject(AppPreferences())
+struct GalleryCleanerApp_Previews: PreviewProvider {
+    static var previews: some View {
+        HomeView()
+            .environmentObject(AppPreferences())
+    }
 }

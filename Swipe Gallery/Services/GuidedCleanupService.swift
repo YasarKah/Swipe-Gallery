@@ -17,16 +17,29 @@ final class GuidedCleanupService {
     private static let cacheQueue = DispatchQueue(label: "GuidedCleanupService.cache", attributes: .concurrent)
     private static var cachedRootSteps: [CacheKey: [GuidedCleanupStep]] = [:]
 
-    func fetchRootSteps(includeVideos: Bool, language: AppLanguage) async -> [GuidedCleanupStep] {
+    func fetchRootSteps(
+        includeVideos: Bool,
+        language: AppLanguage,
+        completedGroupIds: Set<String> = [],
+        progressByGroupId: [String: GroupProgress] = [:]
+    ) async -> [GuidedCleanupStep] {
         let cacheKey = CacheKey(includeVideos: includeVideos, language: language)
         if let cached = Self.cachedRootSteps(for: cacheKey) {
-            return cached
+            return applyWorkHistory(
+                to: cached,
+                completedGroupIds: completedGroupIds,
+                progressByGroupId: progressByGroupId
+            )
         }
 
         let items = await groupingService.fetchAllItems(includeVideos: includeVideos)
         let steps = buildRootSteps(from: items, includeVideos: includeVideos, language: language)
         Self.storeRootSteps(steps, for: cacheKey)
-        return steps
+        return applyWorkHistory(
+            to: steps,
+            completedGroupIds: completedGroupIds,
+            progressByGroupId: progressByGroupId
+        )
     }
 
     private func buildRootSteps(
@@ -149,18 +162,28 @@ final class GuidedCleanupService {
             let isCurrentMonth = key.year == calendar.component(.year, from: Date()) &&
                 key.month == calendar.component(.month, from: Date())
             let subtitleKey: AppTextKey = isCurrentMonth ? .guidedCurrentMonthSubtitle : .guidedMonthSubtitle
-            let detailFormatKey: AppTextKey = includeVideos ? .guidedMonthDetailWithVideosFormat : .guidedMonthDetailPhotosFormat
+            let detail: String
+
+            if includeVideos {
+                detail = String(
+                    format: AppText.value(for: .guidedMonthDetailWithVideosFormat, language: language),
+                    locale: Locale(identifier: language.localeIdentifier),
+                    counts.photos,
+                    counts.videos
+                )
+            } else {
+                detail = String(
+                    format: AppText.value(for: .guidedMonthDetailPhotosFormat, language: language),
+                    locale: Locale(identifier: language.localeIdentifier),
+                    counts.photos
+                )
+            }
 
             return GuidedCleanupStep(
                 id: id,
                 title: title,
                 subtitle: AppText.value(for: subtitleKey, language: language),
-                detail: String(
-                    format: AppText.value(for: detailFormatKey, language: language),
-                    locale: Locale(identifier: language.localeIdentifier),
-                    counts.photos,
-                    counts.videos
-                ),
+                detail: detail,
                 kind: .month(year: key.year, month: key.month),
                 style: .neutral,
                 dateRange: dateRange,
@@ -186,11 +209,7 @@ final class GuidedCleanupService {
             let counts = aggregateCounts(for: children)
             return GuidedCleanupStep(
                 id: "guided-\(stepModeToken(includeVideos: includeVideos))-year-\(year)",
-                title: String(
-                    format: AppText.value(for: .guidedYearTitleFormat, language: language),
-                    locale: Locale(identifier: language.localeIdentifier),
-                    year
-                ),
+                title: String(year),
                 subtitle: AppText.value(for: .guidedYearSubtitle, language: language),
                 detail: String(
                     format: AppText.value(for: .guidedYearDetailFormat, language: language),
@@ -246,6 +265,62 @@ final class GuidedCleanupService {
             partial.photos += step.photoCount
             partial.videos += step.videoCount
         }
+    }
+
+    private func applyWorkHistory(
+        to steps: [GuidedCleanupStep],
+        completedGroupIds: Set<String>,
+        progressByGroupId: [String: GroupProgress]
+    ) -> [GuidedCleanupStep] {
+        steps.compactMap { step in
+            filteredStep(
+                from: step,
+                completedGroupIds: completedGroupIds,
+                progressByGroupId: progressByGroupId
+            )
+        }
+    }
+
+    private func filteredStep(
+        from step: GuidedCleanupStep,
+        completedGroupIds: Set<String>,
+        progressByGroupId: [String: GroupProgress]
+    ) -> GuidedCleanupStep? {
+        if step.isLeaf {
+            if completedGroupIds.contains(step.id) {
+                return nil
+            }
+
+            if let progress = progressByGroupId[step.id], progress.total > 0, progress.viewed >= progress.total {
+                return nil
+            }
+
+            return step
+        }
+
+        let filteredChildren = step.childSteps.compactMap {
+            filteredStep(
+                from: $0,
+                completedGroupIds: completedGroupIds,
+                progressByGroupId: progressByGroupId
+            )
+        }
+
+        guard !filteredChildren.isEmpty else { return nil }
+        let counts = aggregateCounts(for: filteredChildren)
+
+        return GuidedCleanupStep(
+            id: step.id,
+            title: step.title,
+            subtitle: step.subtitle,
+            detail: step.detail,
+            kind: step.kind,
+            style: step.style,
+            dateRange: step.dateRange,
+            photoCount: counts.photos,
+            videoCount: counts.videos,
+            childSteps: filteredChildren
+        )
     }
 
     private func stepModeToken(includeVideos: Bool) -> String {

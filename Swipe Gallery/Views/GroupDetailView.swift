@@ -16,6 +16,7 @@ struct GroupDetailView: View {
     let group: MediaGroup
     let includeVideos: Bool
     let initialIndex: Int
+    var onCompleted: (() -> Void)? = nil
     @ObservedObject var deleteQueue: DeleteQueueService
     @ObservedObject var progressStore: GroupProgressStore
     @Environment(\.dismiss) private var dismiss
@@ -25,6 +26,7 @@ struct GroupDetailView: View {
     @State private var cardOffset: CGSize = .zero
     @State private var nextImage: UIImage?
     @State private var nextImageItemId: String?
+    @State private var currentImageReady = false
     @State private var isLoading = true
     @State private var showReviewDelete = false
     @State private var showBackAlert = false
@@ -58,7 +60,12 @@ struct GroupDetailView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: cardHeight, alignment: .center)
 
-                        Spacer(minLength: 18)
+                        Spacer(minLength: 16)
+
+                        statusPanel
+                            .padding(.horizontal, 24)
+
+                        Spacer(minLength: 12)
 
                         actionBar
                             .padding(.horizontal, 24)
@@ -74,27 +81,30 @@ struct GroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button {
+                    AppFeedback.warning()
                     showBackAlert = true
                 } label: {
-                    Image(systemName: "chevron.left")
+                    toolbarCircle(systemName: "chevron.left")
                 }
             }
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 2) {
                     Text(group.title)
                         .font(.headline)
+                        .foregroundStyle(AppPalette.textPrimary)
                     if !media.isEmpty {
                         Text("\(currentIndex + 1)/\(media.count) - %\(progressPercent)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppPalette.textSecondary)
                     }
                 }
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    AppFeedback.selection()
                     showInfoSheet = true
                 } label: {
-                    Image(systemName: "info.circle")
+                    toolbarCircle(systemName: "info.circle")
                 }
             }
         }
@@ -111,7 +121,9 @@ struct GroupDetailView: View {
                 onDismiss: {
                     progressStore.markCompleted(group.id)
                     progressStore.setProgress(groupId: group.id, viewed: media.count, total: media.count)
+                    AppFeedback.success()
                     showReviewDelete = false
+                    onCompleted?()
                     dismiss()
                 }
             )
@@ -124,17 +136,21 @@ struct GroupDetailView: View {
         }
         .alert(preferences.text(.exitPromptTitle), isPresented: $showBackAlert) {
             Button(preferences.text(.saveAndExit)) {
+                AppFeedback.selection()
                 saveProgress()
                 dismiss()
             }
             Button(preferences.text(.exitWithoutSaving)) {
+                AppFeedback.warning()
                 deleteQueue.clear()
                 dismiss()
             }
             Button(preferences.text(.deleteNow)) {
+                AppFeedback.warning()
                 Task {
                     try? await deleteQueue.deleteAll()
                     await MainActor.run {
+                        AppFeedback.success()
                         saveProgress()
                         dismiss()
                     }
@@ -151,8 +167,10 @@ struct GroupDetailView: View {
         if lastDecision == .delete, let item = lastDeletedItem {
             deleteQueue.remove(item)
         }
+        AppFeedback.selection()
         currentIndex -= 1
         cardOffset = .zero
+        currentImageReady = false
         lastDecision = nil
         lastDeletedItem = nil
     }
@@ -162,7 +180,7 @@ struct GroupDetailView: View {
             ProgressView()
             Text(preferences.text(.loading))
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(AppPalette.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -210,7 +228,8 @@ struct GroupDetailView: View {
                     initialImage: initialImage,
                     cardHeight: cardHeight,
                     onDecision: { applyDecision($0) },
-                    cardOffset: $cardOffset
+                    cardOffset: $cardOffset,
+                    isImageReady: $currentImageReady
                 )
                 .id(currentItem.id)
             }
@@ -219,20 +238,27 @@ struct GroupDetailView: View {
 
     private var actionBar: some View {
         HStack(spacing: 16) {
-            actionButton(
+            GlassActionButton(
                 title: preferences.text(.delete),
                 systemImage: "xmark",
-                color: AppPalette.danger,
+                accent: AppPalette.danger,
+                isEnabled: currentImageReady,
                 action: { triggerDecision(.delete) }
             )
-            iconActionButton(
+            GlassIconButton(
                 systemImage: "arrow.uturn.backward",
+                accent: AppPalette.accentPurple,
+                size: 50,
                 action: { undoLastDecision() }
             )
-            actionButton(
+            .opacity(currentIndex > 0 ? 1 : 0.55)
+            .disabled(currentIndex == 0)
+
+            GlassActionButton(
                 title: preferences.text(.keep),
                 systemImage: "checkmark",
-                color: AppPalette.success,
+                accent: AppPalette.accentBlue,
+                isEnabled: currentImageReady,
                 action: { triggerDecision(.keep) }
             )
         }
@@ -254,6 +280,7 @@ struct GroupDetailView: View {
         cardOffset = .zero
         nextImage = nil
         nextImageItemId = nil
+        currentImageReady = false
 
         let safeInitialIndex = min(max(initialIndex, 0), max(media.count - 1, 0))
         currentIndex = media.isEmpty ? 0 : safeInitialIndex
@@ -266,6 +293,7 @@ struct GroupDetailView: View {
         preloadImage(for: currentItem) { image in
             nextImage = image
             nextImageItemId = currentItem.id
+            currentImageReady = image != nil
             isLoading = false
         }
     }
@@ -279,17 +307,22 @@ struct GroupDetailView: View {
         }
         let nextIndex = currentIndex + 1
         let total = media.count
+        let nextItem = media[safe: nextIndex]
         currentIndex = nextIndex
         cardOffset = .zero
+        currentImageReady = nextItem != nil && nextImageItemId == nextItem?.id && nextImage != nil
         DispatchQueue.main.async { [progressStore, group] in
             progressStore.setProgress(groupId: group.id, viewed: nextIndex, total: total)
         }
         if nextIndex >= media.count {
+            currentImageReady = false
             showReviewDelete = true
         }
     }
 
     private func triggerDecision(_ decision: SwipeDecision) {
+        guard currentImageReady else { return }
+        AppFeedback.commit(style: .rigid)
         withAnimation(.easeOut(duration: detailCardExitAnimationDuration)) {
             cardOffset = CGSize(width: decision == .delete ? -400 : 400, height: 0)
         }
@@ -314,18 +347,15 @@ struct GroupDetailView: View {
 
     private var screenBackground: some View {
         ZStack {
-            LinearGradient(
-                colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            AppBackgroundView(variant: .elevated)
 
-            LinearGradient(
-                colors: [AppPalette.backgroundLiftTop, AppPalette.backgroundLiftBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            RadialGradient(
+                colors: [AppPalette.neonBlueGlow.opacity(progressBackgroundOpacity), .clear],
+                center: .center,
+                startRadius: 40,
+                endRadius: 360
             )
-            .opacity(progressBackgroundOpacity)
+            .blur(radius: 16)
         }
         .animation(.easeInOut(duration: 0.3), value: progressPercent)
     }
@@ -338,46 +368,6 @@ struct GroupDetailView: View {
         let reservedHeight: CGFloat = 110
         let availableHeight = max(280, totalHeight - reservedHeight)
         return min(availableHeight, totalHeight * 0.76)
-    }
-
-    private func actionButton(
-        title: String,
-        systemImage: String,
-        color: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .bold))
-                    .frame(width: 30, height: 30)
-                    .background(color.opacity(0.16))
-                    .clipShape(Circle())
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(AppPalette.surface)
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func iconActionButton(
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.92))
-                .frame(width: 48, height: 48)
-                .background(AppPalette.surface)
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
     }
 
     private func finishGroup(deleteQueue shouldDelete: Bool) {
@@ -396,6 +386,40 @@ struct GroupDetailView: View {
             saveProgress()
             dismiss()
         }
+    }
+
+    private var statusPanel: some View {
+        HStack(spacing: 10) {
+            AccentBadge(text: "📷 \(group.photoCount)", accent: AppPalette.accentBlue)
+            if includeVideos && group.videoCount > 0 {
+                AccentBadge(text: "🎬 \(group.videoCount)", accent: AppPalette.accentPurple)
+            }
+            AccentBadge(text: "🗑️ \(deleteQueue.items.count)", accent: AppPalette.danger)
+            Spacer(minLength: 8)
+            AccentBadge(text: "%\(progressPercent)", accent: AppPalette.accentPink, prominent: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .glassCard(accent: AppPalette.accentBlue, cornerRadius: 22, strokeOpacity: 0.16, shadowOpacity: 0.8)
+    }
+
+    private func toolbarCircle(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(AppPalette.textPrimary)
+            .frame(width: 34, height: 34)
+            .background {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        Circle()
+                            .fill(AppPalette.glassSurface)
+                    }
+            }
+            .overlay {
+                Circle()
+                    .strokeBorder(AppPalette.glassBorder.opacity(0.18), lineWidth: 1)
+            }
     }
 }
 
@@ -420,8 +444,8 @@ private struct NextCardPlaceholderView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                AppPalette.accentBlue.opacity(0.22),
-                                AppPalette.accentPurple.opacity(0.18)
+                                AppPalette.glassSurfaceStrong,
+                                AppPalette.glassSurface
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -443,16 +467,7 @@ private struct NextCardPlaceholderView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(height: cardHeight)
-        .background(
-            LinearGradient(
-                colors: [AppPalette.cardBase, AppPalette.backgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: AppPalette.accentBlue.opacity(0.05), radius: 18, y: 8)
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+        .glassCard(accent: AppPalette.accentBlue, cornerRadius: 30, strokeOpacity: 0.18, shadowOpacity: 0.8)
         .onAppear { loadImage() }
     }
 
@@ -469,16 +484,19 @@ private struct NextCardPlaceholderView: View {
     }
 }
 
-#Preview("Grup detay") {
-    NavigationStack {
-        GroupDetailView(
-            group: MediaGroup(id: "1", title: "OCA '25", type: .month(year: 2025, month: 1), photoCount: 50, videoCount: 2),
-            includeVideos: false,
-            initialIndex: 0,
-            deleteQueue: DeleteQueueService(),
-            progressStore: GroupProgressStore()
-        )
-        .environmentObject(AppPreferences())
+struct GroupDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationStack {
+            GroupDetailView(
+                group: MediaGroup(id: "1", title: "OCA '25", type: .month(year: 2025, month: 1), photoCount: 50, videoCount: 2),
+                includeVideos: false,
+                initialIndex: 0,
+                deleteQueue: DeleteQueueService(),
+                progressStore: GroupProgressStore()
+            )
+            .environmentObject(AppPreferences())
+        }
+        .previewDisplayName("Grup detay")
     }
 }
 
@@ -497,18 +515,14 @@ private struct MediaInfoSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    colors: [AppPalette.backgroundTop, AppPalette.backgroundBottom],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                AppBackgroundView(variant: .elevated)
+                    .ignoresSafeArea()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         Text(preferences.text(.photoInfoDescription))
                             .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.72))
+                            .foregroundStyle(AppPalette.textSecondary)
 
                         infoCard
                     }
@@ -519,7 +533,10 @@ private struct MediaInfoSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(preferences.text(.close)) { dismiss() }
+                    Button(preferences.text(.close)) {
+                        AppFeedback.selection()
+                        dismiss()
+                    }
                 }
             }
         }
@@ -556,8 +573,7 @@ private struct MediaInfoSheet: View {
                 }
             }
         }
-        .background(AppPalette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .glassCard(accent: AppPalette.accentPurple, cornerRadius: 22, strokeOpacity: 0.16, shadowOpacity: 0.7)
     }
 }
 
