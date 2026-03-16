@@ -34,6 +34,8 @@
 		BD551A3E2F6749B90072DCA6 /* AppFeedbackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */; };
 		BD551A402F6749B90072DCA6 /* AppLegalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A412F6749B90072DCA6 /* AppLegalLinks.swift */; };
 		BD551A422F6749B90072DCA6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */; };
+		BD551A442F6749B90072DCA6 /* AppSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A452F6749B90072DCA6 /* AppSyncService.swift */; };
+		BD551A462F6749B90072DCA6 /* AppleSignInService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD551A472F6749B90072DCA6 /* AppleSignInService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +87,9 @@
 		BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFeedbackService.swift; sourceTree = "<group>"; };
 		BD551A412F6749B90072DCA6 /* AppLegalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLegalLinks.swift; sourceTree = "<group>"; };
 		BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BD551A452F6749B90072DCA6 /* AppSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSyncService.swift; sourceTree = "<group>"; };
+		BD551A472F6749B90072DCA6 /* AppleSignInService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInService.swift; sourceTree = "<group>"; };
+		BD551A482F6749B90072DCA6 /* Swipe Gallery.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Swipe Gallery.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +142,7 @@
 			children = (
 				BD551A122F67550B0072DCA6 /* Swipe-Gallery-Info.plist */,
 				BD551A432F6749B90072DCA6 /* PrivacyInfo.xcprivacy */,
+				BD551A482F6749B90072DCA6 /* Swipe Gallery.entitlements */,
 				BD551A1A2F6749B90072DCA6 /* App */,
 				BD551A1B2F6749B90072DCA6 /* Models */,
 				BD551A302F6749B90072DCA6 /* Services */,
@@ -209,7 +215,9 @@
 		BD551A302F6749B90072DCA6 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				BD551A472F6749B90072DCA6 /* AppleSignInService.swift */,
 				BD551A3F2F6749B90072DCA6 /* AppFeedbackService.swift */,
+				BD551A452F6749B90072DCA6 /* AppSyncService.swift */,
 				BD551A392F6749B90072DCA6 /* GuidedCleanupService.swift */,
 				BD551A332F6749B90072DCA6 /* ImageLoaderService.swift */,
 				BD551A242F6749B90072DCA6 /* PhotoLibraryService.swift */,
@@ -371,9 +379,11 @@
 				BD551A402F6749B90072DCA6 /* AppLegalLinks.swift in Sources */,
 				BD551A3C2F6749B90072DCA6 /* AppDesignSystem.swift in Sources */,
 				BD551A322F6749B90072DCA6 /* ImageLoaderService.swift in Sources */,
+				BD551A462F6749B90072DCA6 /* AppleSignInService.swift in Sources */,
 				BD551A232F6749B90072DCA6 /* PhotoLibraryService.swift in Sources */,
 				BD551A252F6749B90072DCA6 /* MediaGroupingService.swift in Sources */,
 				BD551A3E2F6749B90072DCA6 /* AppFeedbackService.swift in Sources */,
+				BD551A442F6749B90072DCA6 /* AppSyncService.swift in Sources */,
 				BD551A382F6749B90072DCA6 /* GuidedCleanupService.swift in Sources */,
 				BD551A342F6749B90072DCA6 /* GroupProgressStore.swift in Sources */,
 				BD551A272F6749B90072DCA6 /* DeleteQueueService.swift in Sources */,
@@ -542,6 +552,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = "Swipe Gallery/Swipe Gallery.entitlements";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Swipe Gallery/Preview Content\"";
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;
@@ -577,6 +588,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = "Swipe Gallery/Swipe Gallery.entitlements";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Swipe Gallery/Preview Content\"";
 				DEVELOPMENT_TEAM = 5ZF9GJJY66;

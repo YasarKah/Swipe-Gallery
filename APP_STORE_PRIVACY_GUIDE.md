@@ -10,22 +10,27 @@ Based on the current codebase:
 
 - the app uses Apple Photos access
 - media review and grouping are handled locally on-device
+- the app now supports optional Sign in with Apple
+- the app can sync cleanup progress and preferences through the user's private CloudKit database
 - no third-party analytics SDKs were found
 - no advertising SDKs were found
-- no account system was found
-- no remote API/network data collection code was found
+- no custom backend/API owned by the developer was found
 - user progress and preferences are stored locally with `UserDefaults`
 
 ## App Privacy likely answers
 
 ### Does this app collect data?
 
-Most likely answer for the current build:
-
-- `No`, if you are not sending any user data off-device
+This now requires a manual review in App Store Connect.
 
 Reason:
-- photo access alone does not automatically mean "data collected" for App Store privacy labels if the data stays on-device and is not transmitted off the device by you or a third party
+- the app stores a Sign in with Apple user identifier locally
+- the app may write progress/preferences to the user's private CloudKit container for restore and sync
+- there is still no third-party analytics, ads, or developer-owned backend in the project
+
+Conservative review posture:
+- treat Sign in with Apple and CloudKit sync as data that is associated with the user's account and review Apple's latest questionnaire wording carefully before selecting `No`
+- do not mark anything as tracking
 
 ### Does this app track users?
 
@@ -33,7 +38,10 @@ Reason:
 
 ### Data linked to the user
 
-- `None`, based on the current implementation
+Manual review suggested:
+
+- `User ID` because Sign in with Apple stores a stable Apple user identifier for restore/sync
+- possibly `Product Interaction` if you choose to disclose synced progress state conservatively
 
 ### Data used to track the user
 
@@ -74,7 +82,6 @@ Re-check this file if you add any of the following:
 - Crashlytics
 - RevenueCat
 - StoreKit subscriptions
-- Sign in with Apple or any account system
 - your own backend API
 - external image processing
 - analytics or attribution SDKs

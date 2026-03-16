@@ -12,6 +12,8 @@ Smart Swipe is provided for personal use to help you review, organize, and delet
 
 You are responsible for how you use the App and for any deletion decisions you make.
 
+The App may also offer optional Sign in with Apple and iCloud-based progress restore features.
+
 ## User Responsibility
 
 You understand and agree that:
@@ -62,6 +64,8 @@ You may not copy, reverse engineer, redistribute, or exploit the App except as p
 ## Third-Party Services
 
 The current version of the App does not rely on third-party advertising or analytics services, based on the present project setup.
+
+If you choose to use Sign in with Apple or iCloud restore, those features depend on Apple platform services.
 
 If third-party services are added later, these Terms may be updated.
 

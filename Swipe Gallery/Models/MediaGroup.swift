@@ -121,17 +121,19 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 final class AppPreferences: ObservableObject {
-    private let languageKey = "appPreferences.language"
+    private let repository: PreferencesSnapshotRepository
+    var onSnapshotChanged: ((PreferencesSnapshot) -> Void)?
 
     @Published var language: AppLanguage {
         didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: languageKey)
+            persist()
         }
     }
 
-    init() {
-        let saved = UserDefaults.standard.string(forKey: languageKey)
-        language = AppLanguage(rawValue: saved ?? "") ?? .turkish
+    init(repository: PreferencesSnapshotRepository = LocalPreferencesRepository()) {
+        self.repository = repository
+        let snapshot = repository.loadSnapshot()
+        language = snapshot.language
     }
 
     func text(_ key: AppTextKey) -> String {
@@ -141,6 +143,31 @@ final class AppPreferences: ObservableObject {
     func format(_ key: AppTextKey, _ args: CVarArg...) -> String {
         let format = text(key)
         return String(format: format, locale: Locale(identifier: language.localeIdentifier), arguments: args)
+    }
+
+    func snapshot(
+        sourceBundleIdentifier: String = Bundle.main.bundleIdentifier ?? AppMigrationConfig.currentBundleIdentifier
+    ) -> PreferencesSnapshot {
+        PreferencesSnapshot(
+            languageCode: language.rawValue,
+            updatedAt: Date(),
+            sourceBundleIdentifier: sourceBundleIdentifier,
+            migrationVersion: AppMigrationConfig.migrationVersion
+        )
+    }
+
+    func replace(with snapshot: PreferencesSnapshot, notify: Bool = true) {
+        language = snapshot.language
+        repository.saveSnapshot(snapshot)
+        if notify {
+            onSnapshotChanged?(self.snapshot())
+        }
+    }
+
+    private func persist() {
+        let currentSnapshot = snapshot()
+        repository.saveSnapshot(currentSnapshot)
+        onSnapshotChanged?(currentSnapshot)
     }
 }
 

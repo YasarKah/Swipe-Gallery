@@ -5,6 +5,7 @@
 //  Ana ekran: grup kartları listesi ve "Videoları dahil et" toggle.
 //
 
+import AuthenticationServices
 import SwiftUI
 
 struct HomeView: View {
@@ -33,8 +34,10 @@ struct HomeView: View {
     @State private var sortOption: GroupSortOption = .newestFirst
     @State private var isLoading = true
     @State private var loadError: String?
+    @State private var didConfigureSync = false
     @StateObject private var deleteQueue = DeleteQueueService()
     @StateObject private var progressStore = GroupProgressStore()
+    @StateObject private var syncCoordinator = MigrationSyncCoordinator()
 
     private let groupingService = MediaGroupingService()
 
@@ -61,6 +64,13 @@ struct HomeView: View {
                         .padding(.vertical, 12)
                     }
                 }
+
+                VStack {
+                    if let noticeMessage = syncCoordinator.noticeMessage {
+                        syncNoticeBanner(message: noticeMessage)
+                    }
+                    Spacer()
+                }
             }
             .navigationTitle(preferences.text(.appTitle))
             .navigationBarTitleDisplayMode(.large)
@@ -82,6 +92,7 @@ struct HomeView: View {
                 }
             }
             .task(id: "\(includeVideos)-\(preferences.language.rawValue)") { await loadGroups() }
+            .task { await configureSyncIfNeeded() }
             .navigationDestination(item: $selectedTarget) { target in
                 destinationView(for: target)
             }
@@ -100,7 +111,9 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsSheet(
-                    includeVideos: $includeVideos
+                    includeVideos: $includeVideos,
+                    progressStore: progressStore,
+                    syncCoordinator: syncCoordinator
                 )
                 .environmentObject(preferences)
             }
@@ -424,6 +437,26 @@ struct HomeView: View {
         AccentBadge(text: text, accent: accent, prominent: true, useMaterial: false)
     }
 
+    @MainActor
+    private func configureSyncIfNeeded() async {
+        guard !didConfigureSync else { return }
+        didConfigureSync = true
+
+        progressStore.onSnapshotChanged = { _ in
+            Task { @MainActor in
+                await syncCoordinator.handleLocalMutation(progressStore: progressStore, preferences: preferences)
+            }
+        }
+
+        preferences.onSnapshotChanged = { _ in
+            Task { @MainActor in
+                await syncCoordinator.handleLocalMutation(progressStore: progressStore, preferences: preferences)
+            }
+        }
+
+        await syncCoordinator.bootstrap(progressStore: progressStore, preferences: preferences)
+    }
+
     private var sortOptionTitle: String {
         switch sortOption {
         case .newestFirst:
@@ -450,6 +483,38 @@ struct HomeView: View {
                 Circle()
                     .strokeBorder(AppPalette.glassBorder.opacity(0.14), lineWidth: 1)
             }
+    }
+
+    private func syncNoticeBanner(message: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "icloud.and.arrow.down.fill")
+                .foregroundStyle(AppPalette.textPrimary)
+
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppPalette.textPrimary)
+                .multilineTextAlignment(.leading)
+
+            Spacer(minLength: 8)
+
+            Button {
+                syncCoordinator.clearNotice()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(AppPalette.textSecondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(AppPalette.cardBase.opacity(0.96))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(AppPalette.accentBlue.opacity(0.18), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
 
@@ -870,6 +935,8 @@ private struct SettingsSheet: View {
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.dismiss) private var dismiss
     @Binding var includeVideos: Bool
+    @ObservedObject var progressStore: GroupProgressStore
+    @ObservedObject var syncCoordinator: MigrationSyncCoordinator
 
     var body: some View {
         NavigationStack {
@@ -882,6 +949,93 @@ private struct SettingsSheet: View {
                         Text(preferences.text(.settingsDescription))
                             .font(.subheadline)
                             .foregroundStyle(AppPalette.textSecondary)
+
+                        settingCard {
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack(spacing: 14) {
+                                    iconBubble(systemName: "person.crop.circle.badge.checkmark")
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(authSectionTitle)
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Text(authSectionDescription)
+                                            .font(.caption)
+                                            .foregroundStyle(.white.opacity(0.68))
+                                    }
+                                }
+
+                                if let session = syncCoordinator.session {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(session.displayName)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(AppPalette.textPrimary)
+
+                                        Text(syncStatusText)
+                                            .font(.caption)
+                                            .foregroundStyle(AppPalette.textSecondary)
+                                    }
+
+                                    HStack(spacing: 10) {
+                                        syncActionButton(
+                                            title: syncButtonTitle,
+                                            systemName: "arrow.triangle.2.circlepath",
+                                            accent: AppPalette.accentBlue
+                                        ) {
+                                            Task {
+                                                await syncCoordinator.syncCurrentState(
+                                                    progressStore: progressStore,
+                                                    preferences: preferences
+                                                )
+                                            }
+                                        }
+
+                                        if syncCoordinator.hasSharedMigrationData || !progressStore.hasAnyProgress {
+                                            syncActionButton(
+                                                title: restoreButtonTitle,
+                                                systemName: "icloud.and.arrow.down",
+                                                accent: AppPalette.accentPurple
+                                            ) {
+                                                Task {
+                                                    await syncCoordinator.restore(
+                                                        progressStore: progressStore,
+                                                        preferences: preferences,
+                                                        force: true
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    syncActionButton(
+                                        title: signOutButtonTitle,
+                                        systemName: "rectangle.portrait.and.arrow.right",
+                                        accent: AppPalette.danger
+                                    ) {
+                                        syncCoordinator.markSignedOut()
+                                    }
+                                } else {
+                                    SignInWithAppleButton(.signIn) { request in
+                                        syncCoordinator.configureAppleRequest(request)
+                                    } onCompletion: { result in
+                                        Task {
+                                            await syncCoordinator.handleAppleSignInResult(
+                                                result,
+                                                progressStore: progressStore,
+                                                preferences: preferences
+                                            )
+                                        }
+                                    }
+                                    .signInWithAppleButtonStyle(.white)
+                                    .frame(height: 50)
+                                }
+
+                                if let errorMessage = syncCoordinator.errorMessage {
+                                    Text(errorMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(AppPalette.danger)
+                                }
+                            }
+                        }
 
                         settingCard {
                             HStack(spacing: 14) {
@@ -1020,6 +1174,54 @@ private struct SettingsSheet: View {
                 AppFeedback.selection()
             }
         )
+    }
+
+    private var authSectionTitle: String {
+        preferences.language == .turkish ? "Apple ile giriş ve eşitleme" : "Apple sign in and sync"
+    }
+
+    private var authSectionDescription: String {
+        preferences.language == .turkish
+            ? "Aynı Apple hesabıyla giriş yaptığında ilerlemeni bu cihaza veya yeni kurulumlara geri getirebilirsin."
+            : "Sign in with the same Apple account to restore your progress on this device or after reinstalling."
+    }
+
+    private var syncStatusText: String {
+        if let statusMessage = syncCoordinator.statusMessage {
+            return statusMessage
+        }
+
+        if let lastSyncedAt = syncCoordinator.lastSyncedAt {
+            let formatted = lastSyncedAt.formatted(date: .abbreviated, time: .shortened)
+            return preferences.language == .turkish ? "Son eşitleme: \(formatted)" : "Last sync: \(formatted)"
+        }
+
+        return preferences.language == .turkish ? "Henüz eşitleme yapılmadı." : "No sync has run yet."
+    }
+
+    private var syncButtonTitle: String {
+        preferences.language == .turkish ? "Şimdi eşitle" : "Sync now"
+    }
+
+    private var restoreButtonTitle: String {
+        preferences.language == .turkish ? "İlerlemeyi geri yükle" : "Restore progress"
+    }
+
+    private var signOutButtonTitle: String {
+        preferences.language == .turkish ? "Çıkış yap" : "Sign out"
+    }
+
+    private func syncActionButton(title: String, systemName: String, accent: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemName)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppPalette.textPrimary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(accent.opacity(0.16))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
